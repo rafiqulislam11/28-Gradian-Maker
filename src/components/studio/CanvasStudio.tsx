@@ -51,6 +51,7 @@ interface CanvasStudioProps {
   canRedo?: boolean;
   onRandomize?: () => void;
   onOpen3DStudio?: () => void;
+  onOpenMobileTools?: () => void;
 }
 
 export const CanvasStudio: React.FC<CanvasStudioProps> = ({
@@ -73,6 +74,7 @@ export const CanvasStudio: React.FC<CanvasStudioProps> = ({
   canRedo = false,
   onRandomize,
   onOpen3DStudio,
+  onOpenMobileTools,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -298,10 +300,20 @@ export const CanvasStudio: React.FC<CanvasStudioProps> = ({
       />
 
       {/* Top Action Bar (Above Canvas) */}
-      <div className="flex items-center justify-between mb-2.5 px-1">
+      <div className="flex items-center justify-between mb-2 px-1 gap-2 overflow-x-auto scrollbar-none shrink-0 py-0.5">
         {/* Left: Editor Controls & Multi-Image Stepper */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-white tracking-wide mr-1">Editor</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {onOpenMobileTools && (
+            <button
+              onClick={onOpenMobileTools}
+              className="lg:hidden px-2.5 py-1 rounded-xl bg-cyan-400 text-dark-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-cyan-500/25 shrink-0"
+              title="Open Tool Panels"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Tools</span>
+            </button>
+          )}
+          <span className="text-sm font-semibold text-white tracking-wide mr-1 hidden sm:inline">Editor</span>
 
           <div className="flex items-center bg-[#121620] p-1 rounded-xl border border-white/10 gap-0.5">
             {/* Direct Upload button (30+ files supported) */}
@@ -553,7 +565,7 @@ export const CanvasStudio: React.FC<CanvasStudioProps> = ({
           {/* Main Processed Canvas */}
           <canvas
             ref={canvasRef}
-            className="block max-w-[calc(100vw-450px)] max-h-[46vh] object-contain rounded-xl"
+            className="block max-w-full max-h-[38vh] sm:max-h-[46vh] lg:max-h-[52vh] object-contain rounded-xl"
           />
 
           {/* Before view overlay if split enabled */}

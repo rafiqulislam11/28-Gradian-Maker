@@ -293,8 +293,8 @@ export const RecentCreations: React.FC<RecentCreationsProps> = ({
         </button>
       </div>
 
-      {/* Horizontal Carousel Thumbnails */}
-      <div className="grid grid-cols-5 gap-3.5">
+      {/* Horizontal Responsive Carousel Thumbnails */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3.5">
         {RECENT_CREATIONS.map(c => {
           const isSelected = c.id === activeId;
 

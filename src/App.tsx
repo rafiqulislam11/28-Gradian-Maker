@@ -9,7 +9,7 @@ import { PatternLibraryModal } from './components/common/PatternLibraryModal';
 import { ThreeDStudioModal } from './components/studio/ThreeDStudioModal';
 import { generateSampleImages } from './engine/sampleGenerator';
 import { extractPaletteFromImage } from './engine/colorExtractor';
-import { Check, Zap, Sparkles, Shield, User, Key, HardDrive } from 'lucide-react';
+import { Check, Zap, Sparkles, Shield, User, Key, HardDrive, Eye, Sliders } from 'lucide-react';
 import { ImageItem } from './types/studio';
 
 export function App() {
@@ -43,6 +43,7 @@ export function App() {
   } = useStudio();
 
   const [activeNavTab, setActiveNavTab] = useState<MainNavTab>('tools');
+  const [mobileStudioTab, setMobileStudioTab] = useState<'canvas' | 'tools'>('canvas');
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
   const [isPatternModalOpen, setIsPatternModalOpen] = useState(false);
   const [is3DModalOpen, setIs3DModalOpen] = useState(false);
@@ -132,54 +133,98 @@ export function App() {
       />
 
       {/* Main Container */}
-      <div className="flex-1 flex px-8 pb-6 overflow-hidden gap-6">
+      <div className="flex-1 flex flex-col px-2.5 sm:px-5 lg:px-8 pb-3 sm:pb-5 overflow-hidden min-h-0">
         {activeNavTab === 'tools' && (
           <>
-            {/* Left: Tools Panel (With Multi-Image Upload & Batch Processing Controls) */}
-            <ToolsPanel
-              settings={settings}
-              onUpdateSettings={updateSettings}
-              onApplySingle={handleApplySingle}
-              onStartBatch={() => startBatch(true)}
-              onExportZip={exportZip}
-              images={images}
-              selectedImage={selectedImage}
-              onSelectImage={setSelectedImageId}
-              onUploadImages={handleUploadImages}
-              onRemoveImage={removeImage}
-              onClearAllImages={clearImages}
-              isProcessingBatch={isProcessing}
-              isExportingZip={isExportingZip}
-              onViewBatchQueue={() => setActiveNavTab('batch')}
-              onOpenPatternModal={() => setIsPatternModalOpen(true)}
-              onOpen3DStudio={() => setIs3DModalOpen(true)}
-              onSelectPreset={applyPreset}
-              onRandomize={randomizeSettings}
-              onReset={resetSettings}
-            />
+            {/* Mobile / Tablet Segmented View Switcher (Visible on < lg) */}
+            <div className="lg:hidden flex items-center justify-center pb-2.5 shrink-0">
+              <div className="flex items-center p-1 rounded-xl bg-[#121620] border border-white/10 shadow-lg">
+                <button
+                  onClick={() => setMobileStudioTab('canvas')}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                    mobileStudioTab === 'canvas'
+                      ? 'bg-cyan-400 text-dark-950 font-bold shadow-md shadow-cyan-400/20'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Canvas Studio</span>
+                </button>
+                <button
+                  onClick={() => setMobileStudioTab('tools')}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                    mobileStudioTab === 'tools'
+                      ? 'bg-cyan-400 text-dark-950 font-bold shadow-md shadow-cyan-400/20'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>Tool Panels</span>
+                </button>
+              </div>
+            </div>
 
-            {/* Right: Center Canvas Viewport + Bottom Multi-Image Strip */}
-            <CanvasStudio
-              settings={settings}
-              onUpdateSettings={updateSettings}
-              onOpenCodeModal={() => setIsCodeModalOpen(true)}
-              images={images}
-              selectedImage={selectedImage}
-              onSelectImage={setSelectedImageId}
-              onUploadImages={handleUploadImages}
-              onRemoveImage={removeImage}
-              onStartBatch={() => startBatch(true)}
-              onExportZip={exportZip}
-              isProcessingBatch={isProcessing}
-              isExportingZip={isExportingZip}
-              onViewBatchQueue={() => setActiveNavTab('batch')}
-              onOpen3DStudio={() => setIs3DModalOpen(true)}
-              onUndo={undo}
-              onRedo={redo}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onRandomize={randomizeSettings}
-            />
+            {/* Responsive Workspace: Side-by-Side on Desktop, Tabbed Switch on Mobile/Tablet */}
+            <div className="flex-1 flex overflow-hidden gap-4 lg:gap-6 min-h-0">
+              {/* Left: Tools Panel */}
+              <div
+                className={`h-full ${
+                  mobileStudioTab === 'tools' ? 'flex flex-1 w-full' : 'hidden'
+                } lg:flex lg:w-[360px] xl:w-[385px] shrink-0 min-h-0`}
+              >
+                <ToolsPanel
+                  settings={settings}
+                  onUpdateSettings={updateSettings}
+                  onApplySingle={handleApplySingle}
+                  onStartBatch={() => startBatch(true)}
+                  onExportZip={exportZip}
+                  images={images}
+                  selectedImage={selectedImage}
+                  onSelectImage={setSelectedImageId}
+                  onUploadImages={handleUploadImages}
+                  onRemoveImage={removeImage}
+                  onClearAllImages={clearImages}
+                  isProcessingBatch={isProcessing}
+                  isExportingZip={isExportingZip}
+                  onViewBatchQueue={() => setActiveNavTab('batch')}
+                  onOpenPatternModal={() => setIsPatternModalOpen(true)}
+                  onOpen3DStudio={() => setIs3DModalOpen(true)}
+                  onSelectPreset={applyPreset}
+                  onRandomize={randomizeSettings}
+                  onReset={resetSettings}
+                />
+              </div>
+
+              {/* Right: Center Canvas Viewport + Bottom Multi-Image Strip */}
+              <div
+                className={`h-full ${
+                  mobileStudioTab === 'canvas' ? 'flex flex-1 w-full' : 'hidden'
+                } lg:flex lg:flex-1 min-w-0 min-h-0`}
+              >
+                <CanvasStudio
+                  settings={settings}
+                  onUpdateSettings={updateSettings}
+                  onOpenCodeModal={() => setIsCodeModalOpen(true)}
+                  images={images}
+                  selectedImage={selectedImage}
+                  onSelectImage={setSelectedImageId}
+                  onUploadImages={handleUploadImages}
+                  onRemoveImage={removeImage}
+                  onStartBatch={() => startBatch(true)}
+                  onExportZip={exportZip}
+                  isProcessingBatch={isProcessing}
+                  isExportingZip={isExportingZip}
+                  onViewBatchQueue={() => setActiveNavTab('batch')}
+                  onOpen3DStudio={() => setIs3DModalOpen(true)}
+                  onUndo={undo}
+                  onRedo={redo}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onRandomize={randomizeSettings}
+                  onOpenMobileTools={() => setMobileStudioTab('tools')}
+                />
+              </div>
+            </div>
           </>
         )}
 
@@ -207,10 +252,10 @@ export function App() {
         )}
 
         {activeNavTab === 'pricing' && (
-          <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
-            <div className="w-full max-w-4xl grid grid-cols-3 gap-6">
+          <div className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8 overflow-y-auto">
+            <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 my-auto">
               {/* Free Plan */}
-              <div className="p-6 rounded-2xl bg-[#121620] border border-white/10 flex flex-col justify-between">
+              <div className="p-5 sm:p-6 rounded-2xl bg-[#121620] border border-white/10 flex flex-col justify-between">
                 <div>
                   <h4 className="text-lg font-bold text-white mb-1">Starter</h4>
                   <p className="text-xs text-slate-400 mb-4">For individual creative styling</p>
@@ -225,7 +270,7 @@ export function App() {
               </div>
 
               {/* Pro Studio Plan */}
-              <div className="p-6 rounded-2xl bg-gradient-to-b from-[#1a2338] to-[#121620] border border-cyan-400/50 shadow-xl shadow-cyan-500/10 flex flex-col justify-between relative">
+              <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-[#1a2338] to-[#121620] border border-cyan-400/50 shadow-xl shadow-cyan-500/10 flex flex-col justify-between relative">
                 <span className="absolute -top-3 right-6 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-cyan-400 text-dark-950">Most Popular</span>
                 <div>
                   <h4 className="text-lg font-bold text-white mb-1">Studio Pro</h4>
@@ -242,7 +287,7 @@ export function App() {
               </div>
 
               {/* Enterprise */}
-              <div className="p-6 rounded-2xl bg-[#121620] border border-white/10 flex flex-col justify-between">
+              <div className="p-5 sm:p-6 rounded-2xl bg-[#121620] border border-white/10 flex flex-col justify-between">
                 <div>
                   <h4 className="text-lg font-bold text-white mb-1">Cluster Enterprise</h4>
                   <p className="text-xs text-slate-400 mb-4">Dedicated Node.js/Python cluster</p>
@@ -260,15 +305,15 @@ export function App() {
         )}
 
         {activeNavTab === 'account' && (
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="w-full max-w-xl p-6 rounded-2xl bg-[#121620] border border-white/10 space-y-6">
+          <div className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8 overflow-y-auto">
+            <div className="w-full max-w-xl p-5 sm:p-6 rounded-2xl bg-[#121620] border border-white/10 space-y-6 my-auto">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-400 to-purple-500 flex items-center justify-center text-dark-950 font-bold text-xl shadow-lg shadow-cyan-500/20">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-cyan-400 to-purple-500 flex items-center justify-center text-dark-950 font-bold text-lg sm:text-xl shadow-lg shadow-cyan-500/20 shrink-0">
                   GX
                 </div>
-                <div>
+                <div className="overflow-hidden">
                   <h3 className="text-base font-bold text-white">Creative Director</h3>
-                  <p className="text-xs text-slate-400">pro@gradientx.studio • Studio Pro License Active</p>
+                  <p className="text-xs text-slate-400 truncate">pro@gradientx.studio • Studio Pro License Active</p>
                 </div>
               </div>
 

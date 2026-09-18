@@ -266,9 +266,9 @@ export const ThreeDStudioModal: React.FC<ThreeDStudioModalProps> = ({
         </div>
 
         {/* Central Workspace: Left 3D Viewport + Right Parameter Sidebar */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
           {/* Left: Three.js Interactive 3D Canvas */}
-          <div className="flex-1 relative bg-[#090b11] overflow-hidden flex items-center justify-center">
+          <div className="flex-1 relative bg-[#090b11] overflow-hidden flex items-center justify-center min-h-[250px] sm:min-h-[320px] lg:min-h-0">
             {/* Viewport Canvas Container */}
             <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
@@ -337,7 +337,7 @@ export const ThreeDStudioModal: React.FC<ThreeDStudioModalProps> = ({
           </div>
 
           {/* Right: Deep 3D Customization Sidebar */}
-          <div className="w-96 border-l border-white/10 bg-[#101420] overflow-y-auto p-5 space-y-4 scrollbar-thin shrink-0">
+          <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-white/10 bg-[#101420] overflow-y-auto p-4 sm:p-5 space-y-4 scrollbar-thin shrink-0 max-h-[45vh] lg:max-h-none">
             {/* 1. Quick Presets Card */}
             <div className="space-y-2 p-3 rounded-xl bg-dark-950 border border-white/5">
               <div className="flex items-center justify-between text-[11px]">

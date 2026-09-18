@@ -189,7 +189,7 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
   ];
 
   return (
-    <div className="w-[360px] xl:w-[385px] shrink-0 flex flex-col h-full overflow-hidden select-none">
+    <div className="w-full lg:w-[360px] xl:w-[385px] shrink-0 flex flex-col h-full overflow-hidden select-none">
       {/* Main Glass Control Card */}
       <div className="flex-1 flex flex-col rounded-2xl bg-[#121620]/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden min-h-0">
         
