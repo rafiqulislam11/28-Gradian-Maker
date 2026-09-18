@@ -157,6 +157,53 @@ export function App() {
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col px-2.5 sm:px-5 lg:px-8 pb-3 sm:pb-5 overflow-hidden min-h-0">
+        {/* 2-Part Quick Module Switcher Ribbon */}
+        <div className="flex items-center justify-between py-1.5 px-3 mb-2.5 rounded-xl bg-[#0e1320]/90 border border-white/10 shrink-0 shadow-md">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono text-slate-400 font-bold hidden sm:inline">{t('app_tagline', 'AI Studio')}:</span>
+
+            {/* Part 1: Image Part */}
+            <button
+              onClick={() => setActiveNavTab('tools')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+                activeNavTab === 'tools'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30'
+                  : 'bg-dark-900 text-slate-400 hover:text-white hover:bg-dark-800'
+              }`}
+            >
+              <span className={`text-[9px] font-mono px-1 py-0.2 rounded font-black ${
+                activeNavTab === 'tools' ? 'bg-black/40 text-cyan-200' : 'bg-white/10 text-slate-400'
+              }`}>
+                {t('part_1_badge', 'PART 1')}
+              </span>
+              <span>{t('part_1_name', 'Image Part')}</span>
+            </button>
+
+            {/* Part 2: Victor Part */}
+            <button
+              onClick={() => setActiveNavTab('vector')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+                activeNavTab === 'vector'
+                  ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-dark-950 shadow-md shadow-teal-500/30 font-extrabold'
+                  : 'bg-dark-900 text-slate-400 hover:text-white hover:bg-dark-800'
+              }`}
+            >
+              <span className={`text-[9px] font-mono px-1 py-0.2 rounded font-black ${
+                activeNavTab === 'vector' ? 'bg-black/30 text-dark-950' : 'bg-white/10 text-slate-400'
+              }`}>
+                {t('part_2_badge', 'PART 2')}
+              </span>
+              <span>{t('part_2_name', 'Victor Part')}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-400 text-[11px] font-medium hidden md:inline">
+              {activeNavTab === 'tools' ? t('part_1_desc') : activeNavTab === 'vector' ? t('part_2_desc') : ''}
+            </span>
+          </div>
+        </div>
+
         {activeNavTab === 'tools' && (
           <>
             {/* Mobile / Tablet Segmented View Switcher (Visible on < lg) */}
@@ -261,6 +308,7 @@ export function App() {
             onUploadImages={handleUploadImages}
             onUpdateImages={setImages}
             onLoadSampleImage={handleLoadSamplePhoto}
+            onSwitchToImagePart={() => setActiveNavTab('tools')}
           />
         )}
 

@@ -222,7 +222,10 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-xs font-black text-white tracking-wide uppercase">{t('tools_header', 'Tool Panels')}</h3>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-extrabold border border-cyan-400/30 uppercase">
+                    {t('part_1_badge', 'PART 1')}
+                  </span>
+                  <h3 className="text-xs font-black text-white tracking-wide uppercase">{t('part_1_name', 'Image Part')}</h3>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-glow-emerald" />
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono block">
@@ -466,27 +469,32 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
             )}
           </div>
 
-          {/* QUICK BANNER: DIRECT JUMP TO VICTOR STUDIO */}
+          {/* QUICK BANNER: DIRECT JUMP TO VICTOR PART (PART 2) */}
           {onOpenVictorStudio && (
             <button
               onClick={onOpenVictorStudio}
-              className="w-full p-2.5 rounded-2xl bg-gradient-to-r from-cyan-500/15 via-teal-500/10 to-indigo-500/15 hover:from-cyan-500/25 hover:to-indigo-500/25 border border-cyan-400/30 text-cyan-300 font-bold text-xs flex items-center justify-between transition shadow-md active:scale-98 group"
+              className="w-full p-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-cyan-500/15 hover:from-emerald-500/25 hover:to-cyan-500/25 border border-teal-400/40 text-teal-300 font-bold text-xs flex items-center justify-between transition shadow-md active:scale-98 group"
             >
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-cyan-400/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 group-hover:scale-110 transition">
+                <div className="w-6 h-6 rounded-lg bg-teal-400/20 border border-teal-400/40 flex items-center justify-center text-teal-300 group-hover:scale-110 transition">
                   <Sparkles className="w-3.5 h-3.5" />
                 </div>
                 <div className="text-left">
-                  <span className="block text-white font-bold group-hover:text-cyan-300 transition">
-                    Victor Studio (ভেক্টর ও আইকন)
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-extrabold border border-emerald-500/30">
+                      {t('part_2_badge', 'PART 2')}
+                    </span>
+                    <span className="text-white font-bold group-hover:text-teal-300 transition">
+                      {t('part_2_name', 'Victor Part')}
+                    </span>
+                  </div>
                   <span className="text-[10px] text-slate-400 font-normal">
-                    Image to Vector, Icon Sheets 1/2/3, White Remover, ZIP
+                    {t('part_2_desc', 'Vector SVG, Icon Sheets & White Remover')}
                   </span>
                 </div>
               </div>
-              <span className="px-2 py-0.5 rounded-lg bg-cyan-400 text-dark-950 font-mono font-black text-[10px] shadow-sm">
-                SVG →
+              <span className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-emerald-400 to-teal-400 text-dark-950 font-mono font-black text-[10px] shadow-sm">
+                {t('switch_to_victor_part', 'Switch ➔')}
               </span>
             </button>
           )}

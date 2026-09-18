@@ -55,33 +55,49 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Desktop Navigation Links (Hidden on < lg) */}
-      <nav className="hidden lg:flex items-center gap-3 xl:gap-5">
+      {/* 🌟 CENTER MASTER 2-PART SWITCHER: [ PART 1: Image Part ] | [ PART 2: Victor Part ] */}
+      <div className="flex items-center p-1 rounded-2xl bg-dark-900/90 border border-white/15 shadow-xl shadow-cyan-950/20 backdrop-blur-xl">
+        {/* Part 1: Image Part */}
         <button
           onClick={() => handleNavClick('tools')}
-          className={`text-xs xl:text-sm font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-200 ${
             activeNavTab === 'tools'
-              ? 'text-cyan-400 font-bold'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 ring-1 ring-cyan-300/50'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
+          title="Part 1: Image to Gradient, Fractal Glass, 2K-8K Upscale, 35mm Film Grain, Full Fill Patterns"
         >
-          {t('nav_image_studio', 'Image Studio')}
+          <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded font-mono font-black uppercase ${
+            activeNavTab === 'tools' ? 'bg-black/40 text-cyan-200 border border-white/20' : 'bg-white/5 text-slate-400'
+          }`}>
+            {t('part_1_badge', 'PART 1')}
+          </span>
+          <span className="truncate">{t('part_1_name', 'Image Part')}</span>
         </button>
 
-        {/* Victor Studio Tab */}
+        <div className="w-[1px] h-4 sm:h-5 bg-white/10 mx-0.5 sm:mx-1"></div>
+
+        {/* Part 2: Victor Part */}
         <button
           onClick={() => handleNavClick('vector')}
-          className={`text-xs xl:text-sm font-medium transition-colors flex items-center gap-1.5 ${
+          className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-200 ${
             activeNavTab === 'vector'
-              ? 'text-cyan-400 font-bold'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-dark-950 shadow-lg shadow-teal-500/30 ring-1 ring-teal-300/50 font-extrabold'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
+          title="Part 2: Image to Victor (SVG), Icon Sheet Maker (1/2/3), Remove White Batch, Icon Pack Maker"
         >
-          <span>{t('nav_victor_studio', 'Victor Studio')}</span>
-          <span className="px-1.5 py-0.2 rounded text-[9px] bg-gradient-to-r from-cyan-400 to-teal-400 text-dark-950 font-bold font-mono">
-            SVG
+          <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded font-mono font-black uppercase ${
+            activeNavTab === 'vector' ? 'bg-black/30 text-dark-950 font-black' : 'bg-white/5 text-slate-400'
+          }`}>
+            {t('part_2_badge', 'PART 2')}
           </span>
+          <span className="truncate">{t('part_2_name', 'Victor Part')}</span>
         </button>
+      </div>
+
+      {/* Desktop Secondary Navigation Links (Hidden on < xl) */}
+      <nav className="hidden xl:flex items-center gap-3">
 
         <button
           onClick={() => handleNavClick('batch')}
@@ -256,34 +272,52 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
+          {/* Part 1: Image Part */}
           <button
             onClick={() => handleNavClick('tools')}
             className={`w-full py-2.5 px-3.5 rounded-xl text-left font-medium text-xs flex items-center justify-between transition ${
               activeNavTab === 'tools'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-sm'
                 : 'text-slate-300 hover:bg-white/5'
             }`}
           >
             <div className="flex items-center gap-2.5">
               <Sliders className="w-4 h-4 text-cyan-400" />
-              <span>{t('nav_image_studio', 'Image Studio')}</span>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-cyan-400/20 text-cyan-300 font-extrabold uppercase">
+                    {t('part_1_badge', 'PART 1')}
+                  </span>
+                  <span className="font-bold">{t('part_1_name', 'Image Part')}</span>
+                </div>
+                <span className="text-[10px] text-slate-400 block">{t('part_1_desc')}</span>
+              </div>
             </div>
-            {activeNavTab === 'tools' && <span className="text-[10px] text-cyan-400 font-mono">Active</span>}
+            {activeNavTab === 'tools' && <span className="text-[10px] text-cyan-400 font-mono font-bold">Active</span>}
           </button>
 
+          {/* Part 2: Victor Part */}
           <button
             onClick={() => handleNavClick('vector')}
             className={`w-full py-2.5 px-3.5 rounded-xl text-left font-medium text-xs flex items-center justify-between transition ${
               activeNavTab === 'vector'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'
+                ? 'bg-teal-500/20 text-teal-300 border border-teal-400/40 shadow-sm'
                 : 'text-slate-300 hover:bg-white/5'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
-              <span>{t('nav_victor_studio', 'Victor Studio')}</span>
+              <Sparkles className="w-4 h-4 text-teal-400" />
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-teal-400/20 text-teal-300 font-extrabold uppercase">
+                    {t('part_2_badge', 'PART 2')}
+                  </span>
+                  <span className="font-bold">{t('part_2_name', 'Victor Part')}</span>
+                </div>
+                <span className="text-[10px] text-slate-400 block">{t('part_2_desc')}</span>
+              </div>
             </div>
-            <span className="px-1.5 py-0.2 rounded text-[9px] bg-cyan-400 text-dark-950 font-bold font-mono">
+            <span className="px-1.5 py-0.2 rounded text-[9px] bg-gradient-to-r from-teal-400 to-emerald-400 text-dark-950 font-bold font-mono">
               SVG
             </span>
           </button>

@@ -43,6 +43,7 @@ interface VectorStudioViewProps {
   onUploadImages: (files: File[]) => void;
   onUpdateImages: (items: ImageItem[]) => void;
   onLoadSampleImage?: () => void;
+  onSwitchToImagePart?: () => void;
 }
 
 export const VectorStudioView: React.FC<VectorStudioViewProps> = ({
@@ -52,6 +53,7 @@ export const VectorStudioView: React.FC<VectorStudioViewProps> = ({
   onUploadImages,
   onUpdateImages,
   onLoadSampleImage,
+  onSwitchToImagePart,
 }) => {
   const { t } = useThemeAndLanguage();
   const [activeTab, setActiveTab] = useState<VictorSubTab>('vectorize');
@@ -276,16 +278,28 @@ export const VectorStudioView: React.FC<VectorStudioViewProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-sm font-bold text-white tracking-wide">Victor Suite</h2>
-              <span className="text-[9.5px] font-mono px-2 py-0.2 rounded-full bg-cyan-400/15 border border-cyan-400/30 text-cyan-300 font-semibold">
-                ভেক্টর ও আইকন স্যুট
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-extrabold border border-emerald-500/30 uppercase">
+                {t('part_2_badge', 'PART 2')}
               </span>
+              <h2 className="text-sm font-bold text-white tracking-wide">{t('part_2_name', 'Victor Part')}</h2>
             </div>
             <span className="text-[10px] text-slate-400 block hidden sm:inline">
               Image to Vector • Icon Sheet Maker (1/2/3) • Remove White Batch • Icon Pack Maker
             </span>
           </div>
         </div>
+
+        {/* Center/Right: 4 Feature Sub-Tabs + Return to Image Part */}
+        <div className="flex items-center gap-2">
+          {onSwitchToImagePart && (
+            <button
+              onClick={onSwitchToImagePart}
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0"
+              title="Return to Part 1: Image Studio"
+            >
+              <span>{t('switch_to_image_part', 'Go to Part 1: Image Part ➔')}</span>
+            </button>
+          )}
 
         {/* 4 Feature Sub-Tabs */}
         <div className="flex items-center bg-[#121620] p-1 rounded-xl border border-white/10 gap-1 overflow-x-auto scrollbar-none text-xs">
@@ -319,6 +333,7 @@ export const VectorStudioView: React.FC<VectorStudioViewProps> = ({
               </button>
             );
           })}
+        </div>
         </div>
       </div>
 
