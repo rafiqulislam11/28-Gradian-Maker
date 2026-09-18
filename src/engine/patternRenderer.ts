@@ -46,11 +46,25 @@ export function renderProceduralPattern(
   // process through 3D Volumetric Depth Engine!
   if (settings.is3D) {
     renderWith3DDepthEngine(ctx, w, h, settings, (bCtx, bw, bh) => {
-      if (family === '3d') {
-        draw3DVolumetricPatterns(bCtx, bw, bh, step, harmonics, variant, settings);
-      } else {
-        renderPatternFamilyGeometry(bCtx, bw, bh, family, item, step, harmonics, variant, settings);
+      bCtx.save();
+      const hasTransform = totalAngleRad !== 0 || offsetX !== 0 || offsetY !== 0;
+      const boundPad = hasTransform ? Math.round(Math.hypot(bw, bh) * 0.5) : 0;
+
+      bCtx.translate(bw / 2 + offsetX, bh / 2 + offsetY);
+      if (totalAngleRad !== 0) {
+        bCtx.rotate(totalAngleRad);
       }
+      bCtx.translate(-bw / 2 - boundPad, -bh / 2 - boundPad);
+
+      const drawW = bw + boundPad * 2;
+      const drawH = bh + boundPad * 2;
+
+      if (family === '3d') {
+        draw3DVolumetricPatterns(bCtx, drawW, drawH, step, harmonics, variant, settings);
+      } else {
+        renderPatternFamilyGeometry(bCtx, drawW, drawH, family, item, step, harmonics, variant, settings);
+      }
+      bCtx.restore();
     });
     return;
   }

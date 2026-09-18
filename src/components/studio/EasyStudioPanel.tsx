@@ -13,7 +13,12 @@ import {
   Eye,
   Wand2,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Layers,
+  Compass,
+  Move,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { FilterSettings, ImageItem, Preset } from '../../types/studio';
 import { PATTERN_MAP } from '../../engine/patternLibrary';
@@ -23,6 +28,7 @@ interface EasyStudioPanelProps {
   onUpdateSettings: <K extends keyof FilterSettings>(category: K, values: Partial<FilterSettings[K]>) => void;
   onOpenPatternModal: () => void;
   onOpen3DStudio?: () => void;
+  onOpenProPatternStudio?: () => void;
   selectedImage: ImageItem | null;
   onRandomize?: () => void;
   onReset?: () => void;
@@ -289,11 +295,15 @@ export const EasyStudioPanel: React.FC<EasyStudioPanelProps> = ({
   settings,
   onUpdateSettings,
   onOpenPatternModal,
+  onOpen3DStudio,
+  onOpenProPatternStudio,
   selectedImage,
   onRandomize,
   onReset,
 }) => {
   const [selectedStyleId, setSelectedStyleId] = useState<string>('cyber_neon');
+  const [patternTab, setPatternTab] = useState<'transform' | 'colors' | 'stroke' | '3d'>('transform');
+  const [showPatternCustomizer, setShowPatternCustomizer] = useState<boolean>(true);
 
   // Magic Auto-Enhance
   const handleMagicAutoEnhance = () => {
@@ -725,6 +735,431 @@ export const EasyStudioPanel: React.FC<EasyStudioPanelProps> = ({
               Browse 500+ 3D
             </span>
           </button>
+
+          {/* Full Pattern Customizer Drawer */}
+          {settings.patterns.enabled && settings.patterns.type !== 'none' && (
+            <div className="space-y-2 pt-2 border-t border-white/10">
+              {/* Header: Title & Sub-tabs */}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowPatternCustomizer(prev => !prev)}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-white hover:text-cyan-300 transition"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Pattern Customizer (সম্পূর্ণ কন্ট্রোল)</span>
+                  {showPatternCustomizer ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                </button>
+
+                {onOpenProPatternStudio && (
+                  <button
+                    onClick={onOpenProPatternStudio}
+                    className="text-[9.5px] text-cyan-400 hover:text-cyan-300 transition flex items-center gap-0.5 font-medium"
+                    title="Open Full Advanced Pattern Studio"
+                  >
+                    <span>Pro Studio</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {showPatternCustomizer && (
+                <div className="space-y-2.5 p-2.5 rounded-xl bg-dark-950 border border-white/5 shadow-inner">
+                  {/* Sub-tab pills: Size & Angle | Color | Line & Glow | 3D Space */}
+                  <div className="grid grid-cols-4 gap-1 p-0.5 rounded-lg bg-dark-900 border border-white/5 text-[9.5px] font-semibold text-center">
+                    {[
+                      { id: 'transform', label: 'Size/Angle' },
+                      { id: 'colors', label: 'Colors' },
+                      { id: 'stroke', label: 'Line/Glow' },
+                      { id: '3d', label: '3D Depth' },
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setPatternTab(tab.id as any)}
+                        className={`py-1 rounded transition ${
+                          patternTab === tab.id
+                            ? 'bg-cyan-400 text-dark-950 font-bold shadow-sm'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* TAB 1: SIZE & ANGLE (Scale, Rotation, Position Shift) */}
+                  {patternTab === 'transform' && (
+                    <div className="space-y-2 text-[10px]">
+                      {/* Scale */}
+                      <div className="space-y-0.5">
+                        <div className="flex justify-between text-slate-300">
+                          <span>Pattern Scale (সাইজ)</span>
+                          <span className="font-mono text-cyan-400 font-bold">{settings.patterns.scale}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="15"
+                          max="150"
+                          value={settings.patterns.scale}
+                          onChange={e => onUpdateSettings('patterns', { scale: Number(e.target.value) })}
+                          className="w-full accent-cyan-400 cursor-pointer h-1.5"
+                        />
+                        <div className="grid grid-cols-5 gap-1 pt-0.5">
+                          {[25, 50, 75, 100, 125].map(sc => (
+                            <button
+                              key={sc}
+                              onClick={() => onUpdateSettings('patterns', { scale: sc })}
+                              className={`py-0.5 rounded text-[9px] font-mono transition ${
+                                settings.patterns.scale === sc
+                                  ? 'bg-cyan-400 text-dark-950 font-bold'
+                                  : 'bg-dark-900 hover:bg-dark-850 text-slate-400 border border-white/5'
+                              }`}
+                            >
+                              {sc}%
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Rotation */}
+                      <div className="space-y-0.5 pt-1.5 border-t border-white/5">
+                        <div className="flex justify-between text-slate-300">
+                          <span className="flex items-center gap-1">
+                            <Compass className="w-3 h-3 text-cyan-400" />
+                            <span>Rotation (ঘূর্ণন কোণ)</span>
+                          </span>
+                          <span className="font-mono text-cyan-400 font-bold">{settings.patterns.rotation ?? 0}°</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="360"
+                          value={settings.patterns.rotation ?? 0}
+                          onChange={e => onUpdateSettings('patterns', { rotation: Number(e.target.value) })}
+                          className="w-full accent-cyan-400 cursor-pointer h-1.5"
+                        />
+                        <div className="grid grid-cols-5 gap-1 pt-0.5">
+                          {[0, 45, 90, 180, 270].map(deg => (
+                            <button
+                              key={deg}
+                              onClick={() => onUpdateSettings('patterns', { rotation: deg })}
+                              className={`py-0.5 rounded text-[9px] font-mono transition ${
+                                (settings.patterns.rotation ?? 0) === deg
+                                  ? 'bg-cyan-400 text-dark-950 font-bold'
+                                  : 'bg-dark-900 hover:bg-dark-850 text-slate-400 border border-white/5'
+                              }`}
+                            >
+                              {deg}°
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* X & Y Shift */}
+                      <div className="space-y-0.5 pt-1.5 border-t border-white/5">
+                        <div className="flex items-center justify-between text-slate-300">
+                          <span className="flex items-center gap-1">
+                            <Move className="w-3 h-3 text-cyan-400" />
+                            <span>Position Shift (পজিশন)</span>
+                          </span>
+                          {((settings.patterns.offsetX ?? 0) !== 0 || (settings.patterns.offsetY ?? 0) !== 0) && (
+                            <button
+                              onClick={() => onUpdateSettings('patterns', { offsetX: 0, offsetY: 0 })}
+                              className="text-[9px] text-cyan-400 hover:underline"
+                            >
+                              Reset (0,0)
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <div className="flex justify-between text-[9px] text-slate-400">
+                              <span>X: {settings.patterns.offsetX ?? 0}px</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="-80"
+                              max="80"
+                              value={settings.patterns.offsetX ?? 0}
+                              onChange={e => onUpdateSettings('patterns', { offsetX: Number(e.target.value) })}
+                              className="w-full accent-cyan-400 h-1.5"
+                            />
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-[9px] text-slate-400">
+                              <span>Y: {settings.patterns.offsetY ?? 0}px</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="-80"
+                              max="80"
+                              value={settings.patterns.offsetY ?? 0}
+                              onChange={e => onUpdateSettings('patterns', { offsetY: Number(e.target.value) })}
+                              className="w-full accent-cyan-400 h-1.5"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: COLORS & BACKGROUND (Stroke Color, Background Fill, Blend Mode) */}
+                  {patternTab === 'colors' && (
+                    <div className="space-y-2 text-[10px]">
+                      {/* Stroke Color */}
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-dark-900 border border-white/5">
+                        <span className="text-slate-300 font-medium">Stroke Color (রঙ):</span>
+                        <label className="cursor-pointer flex items-center gap-1.5" title="Pick stroke color">
+                          <span className="font-mono text-cyan-300 uppercase">{settings.patterns.color}</span>
+                          <div
+                            className="w-4 h-4 rounded border border-white/20 shadow-sm"
+                            style={{ backgroundColor: settings.patterns.color }}
+                          />
+                          <input
+                            type="color"
+                            value={settings.patterns.color}
+                            onChange={e => onUpdateSettings('patterns', { color: e.target.value })}
+                            className="sr-only"
+                          />
+                        </label>
+                      </div>
+
+                      {/* Quick Color Swatches */}
+                      <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+                        {['#00f0ff', '#ff007f', '#ffd700', '#10b981', '#c084fc', '#ff7a00', '#ffffff'].map(c => (
+                          <button
+                            key={c}
+                            onClick={() => onUpdateSettings('patterns', { color: c })}
+                            className="w-5 h-5 rounded-full border border-white/20 shrink-0 transition active:scale-95 shadow-sm"
+                            style={{ backgroundColor: c }}
+                            title={`Select ${c}`}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Background Tile Fill */}
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-dark-900 border border-white/5">
+                        <span className="text-slate-300 font-medium">Background Fill:</span>
+                        <div className="flex items-center gap-1.5">
+                          {settings.patterns.backgroundColor && settings.patterns.backgroundColor !== 'transparent' ? (
+                            <label className="cursor-pointer flex items-center gap-1">
+                              <span className="font-mono text-cyan-300 uppercase">{settings.patterns.backgroundColor}</span>
+                              <div
+                                className="w-4 h-4 rounded border border-white/20 shadow-sm"
+                                style={{ backgroundColor: settings.patterns.backgroundColor }}
+                              />
+                              <input
+                                type="color"
+                                value={settings.patterns.backgroundColor}
+                                onChange={e => onUpdateSettings('patterns', { backgroundColor: e.target.value })}
+                                className="sr-only"
+                              />
+                            </label>
+                          ) : (
+                            <button
+                              onClick={() => onUpdateSettings('patterns', { backgroundColor: '#090d16' })}
+                              className="text-[9.5px] text-cyan-400 hover:underline font-medium"
+                            >
+                              Transparent (Add Fill)
+                            </button>
+                          )}
+                          {settings.patterns.backgroundColor && settings.patterns.backgroundColor !== 'transparent' && (
+                            <button
+                              onClick={() => onUpdateSettings('patterns', { backgroundColor: 'transparent' })}
+                              className="text-[9px] text-rose-400 hover:text-rose-300"
+                              title="Remove background"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Pattern Opacity */}
+                      <div className="space-y-0.5 pt-1 border-t border-white/5">
+                        <div className="flex justify-between text-slate-400">
+                          <span>Pattern Opacity</span>
+                          <span className="font-mono text-cyan-400">{settings.patterns.opacity}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="10"
+                          max="100"
+                          value={settings.patterns.opacity}
+                          onChange={e => onUpdateSettings('patterns', { opacity: Number(e.target.value) })}
+                          className="w-full accent-cyan-400 h-1.5"
+                        />
+                      </div>
+
+                      {/* Blend Mode */}
+                      <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                        <span className="text-slate-400">Blend Mode:</span>
+                        <select
+                          value={settings.patterns.blendMode || 'screen'}
+                          onChange={e => onUpdateSettings('patterns', { blendMode: e.target.value as any })}
+                          className="bg-dark-900 border border-white/10 text-[10px] text-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-cyan-400 cursor-pointer"
+                        >
+                          <option value="screen">Screen (Light Glow)</option>
+                          <option value="overlay">Overlay (Rich Contrast)</option>
+                          <option value="normal">Normal (Solid)</option>
+                          <option value="color-dodge">Color Dodge (Intense)</option>
+                          <option value="soft-light">Soft Light (Subtle)</option>
+                          <option value="multiply">Multiply (Darken)</option>
+                          <option value="difference">Difference (Invert)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: STROKE & GLOW (Line Thickness, Neon Glow Aura) */}
+                  {patternTab === 'stroke' && (
+                    <div className="space-y-2 text-[10px]">
+                      {/* Line Thickness */}
+                      <div className="space-y-0.5">
+                        <div className="flex justify-between text-slate-300">
+                          <span>Line Thickness / Stroke (পুরুত্ব)</span>
+                          <span className="font-mono text-cyan-400 font-bold">{settings.patterns.strokeWidth ?? 1.5}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="6"
+                          step="0.5"
+                          value={settings.patterns.strokeWidth ?? 1.5}
+                          onChange={e => onUpdateSettings('patterns', { strokeWidth: Number(e.target.value) })}
+                          className="w-full accent-cyan-400 h-1.5"
+                        />
+                        <div className="grid grid-cols-4 gap-1 pt-0.5">
+                          {[
+                            { label: '0.5px Fine', val: 0.5 },
+                            { label: '1.0px Mid', val: 1.0 },
+                            { label: '2.0px Thick', val: 2.0 },
+                            { label: '4.0px Bold', val: 4.0 },
+                          ].map(st => (
+                            <button
+                              key={st.val}
+                              onClick={() => onUpdateSettings('patterns', { strokeWidth: st.val })}
+                              className={`py-0.5 rounded text-[9px] font-mono transition ${
+                                (settings.patterns.strokeWidth ?? 1.5) === st.val
+                                  ? 'bg-cyan-400 text-dark-950 font-bold'
+                                  : 'bg-dark-900 hover:bg-dark-850 text-slate-400 border border-white/5'
+                              }`}
+                            >
+                              {st.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Neon Glow Aura */}
+                      <div className="space-y-0.5 pt-1.5 border-t border-white/5">
+                        <div className="flex justify-between text-slate-300">
+                          <span className="flex items-center gap-1">
+                            <Sun className="w-3 h-3 text-cyan-400" />
+                            <span>Neon Glow Aura (নিয়ন গ্লো)</span>
+                          </span>
+                          <span className="font-mono text-cyan-400 font-bold">{settings.patterns.glow ?? 0}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="20"
+                          value={settings.patterns.glow ?? 0}
+                          onChange={e => onUpdateSettings('patterns', { glow: Number(e.target.value) })}
+                          className="w-full accent-cyan-400 h-1.5"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 4: 3D SPACE (Extrusion, Shading, Pitch/Yaw) */}
+                  {patternTab === '3d' && (
+                    <div className="space-y-2 text-[10px]">
+                      {/* 3D Master Switch */}
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-dark-900 border border-white/5">
+                        <span className="font-medium text-slate-200 flex items-center gap-1">
+                          <Box className="w-3 h-3 text-cyan-400" />
+                          <span>3D Volumetric Extrusion</span>
+                        </span>
+                        <button
+                          onClick={() => onUpdateSettings('patterns', { is3D: !settings.patterns.is3D })}
+                          className={`px-2 py-0.5 rounded text-[9px] font-bold transition ${
+                            settings.patterns.is3D
+                              ? 'bg-gradient-to-r from-cyan-400 to-purple-400 text-dark-950 shadow'
+                              : 'bg-dark-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {settings.patterns.is3D ? '3D Active' : 'Enable 3D'}
+                        </button>
+                      </div>
+
+                      {/* 5 Shading Modes */}
+                      <div className="grid grid-cols-3 gap-1">
+                        {[
+                          { id: 'extrude', label: 'Extrude' },
+                          { id: 'isometric', label: 'Isometric' },
+                          { id: 'perspective', label: 'Horizon' },
+                          { id: 'wireframe', label: 'Wireframe' },
+                          { id: 'emboss', label: 'Bas-Relief' },
+                        ].map(m => (
+                          <button
+                            key={m.id}
+                            onClick={() => onUpdateSettings('patterns', { shading3D: m.id as any, is3D: true })}
+                            className={`py-1 rounded text-[9px] font-bold transition text-center ${
+                              (settings.patterns.shading3D ?? 'extrude') === m.id
+                                ? 'bg-cyan-400 text-dark-950 shadow-sm'
+                                : 'bg-dark-900 hover:bg-dark-850 text-slate-400 border border-white/5'
+                            }`}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Extrusion Depth */}
+                      <div className="space-y-0.5 pt-1 border-t border-white/5">
+                        <div className="flex justify-between text-slate-300">
+                          <span>3D Extrusion Depth (গভীরতা)</span>
+                          <span className="font-mono text-cyan-400 font-bold">{settings.patterns.depth3D ?? 18}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="40"
+                          value={settings.patterns.depth3D ?? 18}
+                          onChange={e => onUpdateSettings('patterns', { depth3D: Number(e.target.value), is3D: true })}
+                          className="w-full accent-cyan-400 h-1.5"
+                        />
+                      </div>
+
+                      {/* Tilt Pitch / Yaw */}
+                      <div className="space-y-0.5 pt-1 border-t border-white/5">
+                        <div className="flex justify-between text-slate-300">
+                          <span>3D Tilt Angle (Pitch / Yaw)</span>
+                          <span className="font-mono text-cyan-400">{settings.patterns.pitch3D ?? 25}°, {settings.patterns.yaw3D ?? 0}°</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1">
+                          {[
+                            { label: 'Isometric', p: 30, y: 0 },
+                            { label: 'Horizon', p: 48, y: 0 },
+                            { label: 'Cyber Yaw', p: 25, y: 20 },
+                            { label: 'Top View', p: 10, y: 0 },
+                          ].map(ang => (
+                            <button
+                              key={ang.label}
+                              onClick={() => onUpdateSettings('patterns', { pitch3D: ang.p, yaw3D: ang.y, is3D: true })}
+                              className="py-0.5 rounded text-[8.5px] font-mono bg-dark-900 hover:bg-dark-850 text-slate-400 hover:text-cyan-300 border border-white/5 transition"
+                            >
+                              {ang.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

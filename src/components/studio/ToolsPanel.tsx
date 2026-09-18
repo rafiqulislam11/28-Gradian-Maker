@@ -455,6 +455,10 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
               onUpdateSettings={onUpdateSettings}
               onOpenPatternModal={onOpenPatternModal}
               onOpen3DStudio={onOpen3DStudio}
+              onOpenProPatternStudio={() => {
+                setPanelMode('pro');
+                setActiveCategory('patterns');
+              }}
               selectedImage={selectedImage}
               onRandomize={onRandomize}
               onReset={onReset}
