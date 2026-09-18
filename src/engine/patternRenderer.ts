@@ -42,10 +42,15 @@ export function renderProceduralPattern(
   const harmonics = item?.params.harmonics || 2;
   const family = item?.family || 'grid';
 
-  // If 3D Mode is enabled on any 2D pattern, process through 3D Volumetric Depth Engine
-  if (settings.is3D && family !== '3d') {
+  // If 3D Mode is enabled on any pattern (all 500 patterns support 3D volumetric extrusion),
+  // process through 3D Volumetric Depth Engine!
+  if (settings.is3D) {
     renderWith3DDepthEngine(ctx, w, h, settings, (bCtx, bw, bh) => {
-      renderPatternFamilyGeometry(bCtx, bw, bh, family, item, step, harmonics, variant, settings);
+      if (family === '3d') {
+        draw3DVolumetricPatterns(bCtx, bw, bh, step, harmonics, variant, settings);
+      } else {
+        renderPatternFamilyGeometry(bCtx, bw, bh, family, item, step, harmonics, variant, settings);
+      }
     });
     return;
   }
@@ -219,25 +224,58 @@ function renderWith3DDepthEngine(
   ctx.translate(-w / 2, -h / 2);
 
   if (shading === 'extrude' && depth > 0) {
-    // Multi-layer volumetric depth extrusion
-    const slices = Math.min(20, Math.max(3, Math.round(depth)));
+    // Multi-layer volumetric depth extrusion with directional light-shading
+    const slices = Math.min(24, Math.max(3, Math.round(depth)));
     const stepX = (lx * depth) / slices;
     const stepY = (ly * depth) / slices;
 
     for (let i = slices; i >= 1; i--) {
       ctx.save();
-      const shade = 0.3 + 0.6 * (1 - i / slices);
+      const shade = 0.25 + 0.65 * (1 - i / slices);
       ctx.globalAlpha = (settings.opacity / 100) * 0.5 * shade;
       ctx.drawImage(buf, stepX * i, stepY * i);
       ctx.restore();
     }
+  } else if (shading === 'isometric' && depth > 0) {
+    // 30° Axonometric dual-facet isometric projection
+    const slices = Math.min(18, Math.max(3, Math.round(depth * 0.85)));
+    const isoX = Math.cos(Math.PI / 6) * (depth / slices);
+    const isoY = Math.sin(Math.PI / 6) * (depth / slices);
+
+    for (let i = slices; i >= 1; i--) {
+      ctx.save();
+      const shade = 0.2 + 0.55 * (1 - i / slices);
+      ctx.globalAlpha = (settings.opacity / 100) * 0.55 * shade;
+      ctx.drawImage(buf, isoX * i, isoY * i);
+      ctx.restore();
+    }
+  } else if (shading === 'perspective' && depth > 0) {
+    // Horizon spatial vanishing point depth projection with gradient atmospheric falloff
+    const slices = Math.min(20, Math.max(3, Math.round(depth)));
+    for (let i = slices; i >= 1; i--) {
+      ctx.save();
+      const falloff = 1 - i / slices;
+      ctx.globalAlpha = (settings.opacity / 100) * 0.45 * (0.2 + 0.8 * falloff);
+      const shiftY = (depth * 1.4 * i) / slices;
+      ctx.drawImage(buf, 0, shiftY);
+      ctx.restore();
+    }
   } else if (shading === 'emboss') {
-    // 3D Chiseled Bas-Relief
+    // 3D Chiseled Bas-Relief with dual highlight and dark relief shadow
     ctx.save();
     ctx.globalAlpha = (settings.opacity / 100) * 0.6;
     ctx.drawImage(buf, lx * 3, ly * 3); // dark relief shadow
     ctx.globalCompositeOperation = 'screen';
     ctx.drawImage(buf, -lx * 2, -ly * 2); // bright specular highlight
+    ctx.restore();
+  } else if (shading === 'wireframe') {
+    // 3D Holographic Wireframe with dual neon rim projection
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = (settings.opacity / 100) * 0.7;
+    ctx.drawImage(buf, lx * 4, ly * 4);
+    ctx.globalAlpha = (settings.opacity / 100) * 0.4;
+    ctx.drawImage(buf, -lx * 4, -ly * 4);
     ctx.restore();
   }
 
@@ -940,7 +978,8 @@ function drawBasicGrid(
 export function renderPatternThumbnail(
   canvas: HTMLCanvasElement,
   patternItem: PatternItem,
-  tintColor: string = '#00f0ff'
+  tintColor: string = '#00f0ff',
+  is3D: boolean = false
 ): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -958,10 +997,16 @@ export function renderPatternThumbnail(
   const mockSettings: FilterSettings['patterns'] = {
     enabled: true,
     type: patternItem.id,
-    scale: 35,
-    opacity: 85,
+    scale: is3D ? 30 : 35,
+    opacity: 90,
     color: tintColor,
     blendMode: 'screen',
+    is3D: is3D || patternItem.category === '3d',
+    depth3D: 18,
+    pitch3D: 28,
+    yaw3D: 12,
+    shading3D: 'extrude',
+    lightAngle3D: 135,
   };
 
   renderProceduralPattern(ctx, w, h, mockSettings, patternItem);

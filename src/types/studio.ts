@@ -64,7 +64,7 @@ export interface FilterSettings {
     pitch3D?: number; // -60 to 60 deg (tilt X)
     yaw3D?: number; // -60 to 60 deg (tilt Y)
     lightAngle3D?: number; // 0 - 360 deg
-    shading3D?: 'extrude' | 'isometric' | 'perspective' | 'emboss';
+    shading3D?: 'extrude' | 'isometric' | 'perspective' | 'emboss' | 'wireframe';
     // Full Image Pattern Transformation Engine
     patternize?: boolean; // When true, converts the full image into the pattern
     patternizeMode?: 'mosaic' | 'halftone' | '3d-voxel' | 'stencil' | 'duotone';

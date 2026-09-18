@@ -9,6 +9,7 @@ import {
   Filter,
   Layers,
   Zap,
+  Box,
 } from 'lucide-react';
 import {
   PATTERN_LIBRARY,
@@ -23,7 +24,7 @@ interface PatternLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
   activePatternId: string;
-  onSelectPattern: (patternId: string) => void;
+  onSelectPattern: (patternId: string, enable3D?: boolean) => void;
   currentColor?: string;
 }
 
@@ -36,6 +37,7 @@ export const PatternLibraryModal: React.FC<PatternLibraryModalProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<PatternCategory>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [is3DView, setIs3DView] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
   const itemsPerPage = 36;
 
@@ -88,9 +90,12 @@ export const PatternLibraryModal: React.FC<PatternLibraryModalProps> = ({
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30 hidden sm:inline">
                   {PATTERN_CATEGORIES.length - 1} Categories
                 </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-gradient-to-r from-cyan-400/20 to-purple-500/20 text-cyan-200 border border-cyan-400/30 hidden sm:inline">
+                  🧊 All 500 in 3D
+                </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Mathematical vectors, sacred geometries, traditional tiles, and tech grids
+                Mathematical vectors, sacred geometries, traditional tiles, and tech grids (All 3D customizable)
               </p>
             </div>
           </div>
@@ -106,25 +111,48 @@ export const PatternLibraryModal: React.FC<PatternLibraryModalProps> = ({
 
         {/* Search & Category Filter Section */}
         <div className="px-6 py-3 border-b border-white/5 bg-[#121622]/40 flex flex-col gap-3 shrink-0">
-          {/* Search Input */}
-          <div className="relative w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search 500+ patterns (e.g. circuit, waves, hex, star, sacred, chevron, tile)..."
-              className="w-full pl-10 pr-10 py-2 rounded-xl bg-dark-900 border border-white/10 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition"
-              autoFocus
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+          {/* Search Input & 3D Preview Toggle */}
+          <div className="flex items-center gap-2.5">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search 500+ patterns (e.g. circuit, waves, hex, star, sacred, chevron, tile)..."
+                className="w-full pl-10 pr-10 py-2 rounded-xl bg-dark-900 border border-white/10 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition"
+                autoFocus
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* 3D Mode Live Preview Toggle */}
+            <button
+              onClick={() => setIs3DView(prev => !prev)}
+              className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border shadow-sm ${
+                is3DView
+                  ? 'bg-gradient-to-r from-cyan-400 to-purple-400 text-dark-950 border-cyan-300 shadow-cyan-500/25 ring-1 ring-cyan-300'
+                  : 'bg-dark-900/90 text-slate-300 hover:text-white border-white/10 hover:border-cyan-400/40'
+              }`}
+              title="Toggle real-time 3D volumetric depth preview on all 500 patterns"
+            >
+              <Box className="w-4 h-4" />
+              <span>{is3DView ? '3D Preview: ON' : '3D Preview: OFF'}</span>
+              <span
+                className={`px-1.5 py-0.2 rounded text-[9px] font-mono ${
+                  is3DView ? 'bg-dark-950/30 text-dark-950 font-bold' : 'bg-cyan-500/20 text-cyan-300'
+                }`}
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+                500 3D
+              </span>
+            </button>
           </div>
 
           {/* Category Pill Filters (Horizontal scroll) */}
@@ -182,8 +210,9 @@ export const PatternLibraryModal: React.FC<PatternLibraryModalProps> = ({
                   item={item}
                   isSelected={activePatternId === item.id}
                   currentColor={currentColor}
+                  is3DView={is3DView}
                   onSelect={() => {
-                    onSelectPattern(item.id);
+                    onSelectPattern(item.id, is3DView);
                     onClose();
                   }}
                 />
@@ -240,6 +269,7 @@ interface PatternCardProps {
   item: PatternItem;
   isSelected: boolean;
   currentColor: string;
+  is3DView: boolean;
   onSelect: () => void;
 }
 
@@ -247,15 +277,18 @@ const PatternCard: React.FC<PatternCardProps> = ({
   item,
   isSelected,
   currentColor,
+  is3DView,
   onSelect,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (canvasRef.current) {
-      renderPatternThumbnail(canvasRef.current, item, currentColor);
+      renderPatternThumbnail(canvasRef.current, item, currentColor, is3DView);
     }
-  }, [item, currentColor]);
+  }, [item, currentColor, is3DView]);
+
+  const show3DBadge = is3DView || item.category === '3d';
 
   return (
     <div
@@ -280,6 +313,12 @@ const PatternCard: React.FC<PatternCardProps> = ({
             <Check className="w-2.5 h-2.5 stroke-[3]" />
           </div>
         )}
+
+        {show3DBadge && (
+          <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-cyan-500/90 text-dark-950 shadow-sm flex items-center gap-0.5">
+            <span>3D</span>
+          </div>
+        )}
       </div>
 
       {/* Pattern Metadata */}
@@ -290,9 +329,16 @@ const PatternCard: React.FC<PatternCardProps> = ({
         >
           {item.name.replace(/\s\(#\d+\)$/, '')}
         </span>
-        <span className="text-[10px] text-slate-500 capitalize truncate">
-          {item.category}
-        </span>
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-slate-500 capitalize truncate">
+            {item.category}
+          </span>
+          {show3DBadge && (
+            <span className="text-[9px] font-mono text-cyan-400 font-semibold shrink-0">
+              Depth 3D
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

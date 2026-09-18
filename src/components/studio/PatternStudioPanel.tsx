@@ -940,11 +940,34 @@ export const PatternStudioPanel: React.FC<PatternStudioPanelProps> = ({
                   </button>
                 </div>
 
-                {/* Quick Notice if disabled */}
-                {!settings.is3D && (
-                  <p className="text-[10px] text-cyan-300/80 bg-cyan-950/40 p-1.5 rounded-lg border border-cyan-500/20">
-                    💡 Click "Enable 3D" or select a 3D preset below to project this pattern into 3D space with depth, tilt, and lighting!
-                  </p>
+                {/* Quick 1-click Project Active Pattern to 3D */}
+                {!settings.is3D ? (
+                  <button
+                    onClick={() =>
+                      onUpdateSettings({
+                        is3D: true,
+                        depth3D: settings.depth3D || 20,
+                        pitch3D: settings.pitch3D || 28,
+                        yaw3D: settings.yaw3D || 0,
+                        shading3D: settings.shading3D || 'extrude',
+                      })
+                    }
+                    className="w-full py-1.5 px-2.5 rounded-lg bg-gradient-to-r from-cyan-500/25 via-purple-500/25 to-teal-500/25 hover:from-cyan-500/35 hover:to-teal-500/35 border border-cyan-400/40 text-cyan-200 text-[10.5px] font-bold flex items-center justify-between transition shadow-sm"
+                  >
+                    <span className="truncate">✨ Project "{patternName}" in 3D</span>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-cyan-400 text-dark-950 font-bold shrink-0">
+                      Activate 3D
+                    </span>
+                  </button>
+                ) : (
+                  <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-[10px]">
+                    <span className="text-cyan-300 font-medium truncate">
+                      🧊 3D Engine Active on <strong className="text-white">{patternName}</strong>
+                    </span>
+                    <span className="text-cyan-400 font-mono text-[9px] shrink-0">
+                      {settings.depth3D ?? 15}px • {settings.shading3D ?? 'extrude'}
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -962,6 +985,7 @@ export const PatternStudioPanel: React.FC<PatternStudioPanelProps> = ({
                     { id: 'isometric', label: 'Isometric 30°', desc: 'Axonometric projection with dual facet shade' },
                     { id: 'perspective', label: 'Horizon Perspective', desc: 'Vanishing-point tilt with spatial depth' },
                     { id: 'emboss', label: 'Chiseled Bas-Relief', desc: 'Sculpted 3D coin emboss with specular rims' },
+                    { id: 'wireframe', label: 'Holographic Wireframe', desc: 'Dual-rim neon cage with matrix glow' },
                   ].map(mode => {
                     const isSelected = (settings.shading3D ?? 'extrude') === mode.id;
                     return (
@@ -1068,6 +1092,24 @@ export const PatternStudioPanel: React.FC<PatternStudioPanelProps> = ({
                     />
                   </div>
                 </div>
+
+                {/* 3D Angle Presets */}
+                <div className="grid grid-cols-4 gap-1 pt-1 border-t border-white/5">
+                  {[
+                    { label: 'Isometric', pitch: 30, yaw: 0 },
+                    { label: 'Horizon', pitch: 48, yaw: 0 },
+                    { label: 'Cyber Yaw', pitch: 25, yaw: 20 },
+                    { label: 'Top View', pitch: 10, yaw: 0 },
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      onClick={() => onUpdateSettings({ pitch3D: preset.pitch, yaw3D: preset.yaw, is3D: true })}
+                      className="py-0.5 rounded text-[9px] font-mono bg-dark-900 hover:bg-dark-850 text-slate-400 hover:text-cyan-300 border border-white/5 transition"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* 3D Directional Light Sun Angle */}
@@ -1110,8 +1152,11 @@ export const PatternStudioPanel: React.FC<PatternStudioPanelProps> = ({
               </div>
 
               {/* 1-Click Fast 3D Preset Launcher */}
-              <div className="space-y-1.5 p-2 rounded-xl bg-dark-950 border border-white/5">
-                <span className="text-[10px] font-semibold text-slate-300">1-Click Fast 3D Patterns</span>
+              <div className="space-y-1.5 p-2.5 rounded-xl bg-dark-950 border border-white/5">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="font-semibold text-slate-300">1-Click Fast 3D Patterns</span>
+                  <span className="text-[9px] text-cyan-400 font-mono">500+ Ready</span>
+                </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
                     onClick={() =>
@@ -1181,6 +1226,42 @@ export const PatternStudioPanel: React.FC<PatternStudioPanelProps> = ({
                   >
                     <span>👑</span>
                     <span className="truncate">Bas-Relief Gold</span>
+                  </button>
+                  <button
+                    onClick={() =>
+                      onUpdateSettings({
+                        type: settings.type && settings.type !== 'none' ? settings.type : 'pat_tec_001',
+                        enabled: true,
+                        is3D: true,
+                        shading3D: 'wireframe',
+                        depth3D: 25,
+                        pitch3D: 35,
+                        yaw3D: 15,
+                        color: '#00f0ff',
+                      })
+                    }
+                    className="p-1.5 rounded-lg bg-dark-900 hover:bg-dark-800 border border-white/5 hover:border-cyan-400/30 text-left transition text-[10px] text-slate-300 hover:text-white flex items-center gap-1.5"
+                  >
+                    <span>🌐</span>
+                    <span className="truncate">Holo Wireframe</span>
+                  </button>
+                  <button
+                    onClick={() =>
+                      onUpdateSettings({
+                        type: 'pat_sac_003',
+                        enabled: true,
+                        is3D: true,
+                        shading3D: 'isometric',
+                        depth3D: 20,
+                        pitch3D: 28,
+                        yaw3D: -10,
+                        color: '#a855f7',
+                      })
+                    }
+                    className="p-1.5 rounded-lg bg-dark-900 hover:bg-dark-800 border border-white/5 hover:border-cyan-400/30 text-left transition text-[10px] text-slate-300 hover:text-white flex items-center gap-1.5"
+                  >
+                    <span>🌀</span>
+                    <span className="truncate">Sacred 3D Torus</span>
                   </button>
                 </div>
               </div>

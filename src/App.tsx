@@ -364,10 +364,11 @@ export function App() {
         isOpen={isPatternModalOpen}
         onClose={() => setIsPatternModalOpen(false)}
         activePatternId={settings.patterns.type}
-        onSelectPattern={(patId) => {
+        onSelectPattern={(patId, enable3D) => {
           updateSettings('patterns', {
             type: patId,
             enabled: patId !== 'none',
+            ...(enable3D !== undefined ? { is3D: enable3D } : {}),
           });
         }}
         currentColor={settings.patterns.color}
