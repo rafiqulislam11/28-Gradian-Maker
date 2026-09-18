@@ -2,6 +2,8 @@
 
 A state-of-the-art bulk image processing, procedural pattern synthesis, 3D texture modeling, and creative gradient studio built with React, TypeScript, Tailwind CSS, Three.js, and multi-threaded Web Workers.
 
+🔗 **Live Demo**: [https://rafiqulislam11.github.io/28-Gradian-Maker/](https://rafiqulislam11.github.io/28-Gradian-Maker/)
+
 ![Gradient X Studio](https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80)
 
 ---
