@@ -23,7 +23,8 @@ export const RECENT_CREATIONS: CreationItem[] = [
       gradient: {
         enabled: true,
         type: 'mesh',
-        blendMode: 'normal',
+        position: 'overlay',
+        blendMode: 'overlay',
         opacity: 85,
         angle: 135,
         stops: [

@@ -50,6 +50,8 @@ export const EASY_STYLES = [
       onUpdate('gradient', {
         enabled: true,
         type: 'mesh',
+        position: 'overlay',
+        blendMode: 'overlay',
         opacity: 85,
         meshColors: ['#00d2ff', '#9d00ff', '#ff007f', '#00f0ff'],
         stops: [
@@ -85,6 +87,8 @@ export const EASY_STYLES = [
       onUpdate('gradient', {
         enabled: true,
         type: 'linear',
+        position: 'overlay',
+        blendMode: 'soft-light',
         opacity: 75,
         angle: 135,
         stops: [
@@ -109,6 +113,8 @@ export const EASY_STYLES = [
       onUpdate('gradient', {
         enabled: true,
         type: 'linear',
+        position: 'overlay',
+        blendMode: 'overlay',
         opacity: 85,
         angle: 120,
         stops: [
@@ -133,6 +139,8 @@ export const EASY_STYLES = [
       onUpdate('gradient', {
         enabled: true,
         type: 'linear',
+        position: 'overlay',
+        blendMode: 'overlay',
         opacity: 80,
         angle: 90,
         stops: [
@@ -168,6 +176,8 @@ export const EASY_STYLES = [
       onUpdate('gradient', {
         enabled: true,
         type: 'linear',
+        position: 'overlay',
+        blendMode: 'overlay',
         opacity: 85,
         angle: 45,
         stops: [
@@ -203,6 +213,8 @@ export const EASY_STYLES = [
       onUpdate('gradient', {
         enabled: true,
         type: 'mesh',
+        position: 'overlay',
+        blendMode: 'overlay',
         opacity: 75,
         meshColors: ['#00d2ff', '#4f46e5', '#ec4899', '#f59e0b'],
         stops: [
@@ -237,6 +249,8 @@ export const EASY_STYLES = [
       onUpdate('gradient', {
         enabled: true,
         type: 'radial',
+        position: 'overlay',
+        blendMode: 'overlay',
         opacity: 80,
         stops: [
           { id: '1', color: '#0369a1', position: 0 },
@@ -270,6 +284,8 @@ export const EASY_STYLES = [
       onUpdate('gradient', {
         enabled: true,
         type: 'linear',
+        position: 'overlay',
+        blendMode: 'multiply',
         opacity: 65,
         angle: 180,
         stops: [

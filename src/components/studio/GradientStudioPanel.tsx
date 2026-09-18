@@ -306,13 +306,13 @@ export const GradientStudioPanel: React.FC<GradientStudioPanelProps> = ({
         <div className="flex items-center gap-1.5">
           {/* Layer placement: Overlay vs Backdrop */}
           <select
-            value={settings.position ?? 'background'}
+            value={settings.position ?? 'overlay'}
             onChange={e => onUpdateSettings({ position: e.target.value as 'overlay' | 'background' })}
             className="bg-dark-900 border border-white/10 text-[10px] text-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-cyan-400 cursor-pointer"
             title="Layer placement relative to the uploaded image"
           >
+            <option value="overlay">Overlay (On Top of Image)</option>
             <option value="background">Backdrop (Behind Image)</option>
-            <option value="overlay">Overlay (On Top)</option>
           </select>
 
           {/* Toggle Enable/Disable */}

@@ -3,6 +3,8 @@ import { hexToRgb } from './colorExtractor';
 import { renderProceduralPattern } from './patternRenderer';
 import { PATTERN_MAP } from './patternLibrary';
 import { applyFullImagePatternize } from './imagePatternizer';
+import { applyFractalGlassEffect } from './fractalGlassEngine';
+import { applyGradientMakerPipeline } from './gradientMakerEngine';
 
 export interface FilterPipelineOptions {
   isFastPreview?: boolean;
@@ -91,6 +93,11 @@ export function applyAllFiltersToCanvas(
     applyGradientPipeline(ctx, w, h, settings.gradient);
   }
 
+  // 0.05 Apply Background Gradient Maker
+  if (settings.gradientMaker?.enabled && settings.gradientMaker.position === 'background' && settings.gradientMaker.mode !== '4') {
+    applyGradientMakerPipeline(ctx, w, h, settings.gradientMaker, originalImage);
+  }
+
   // 0.1 Apply Background Pattern (if pattern position is set to 'background')
   if (settings.patterns.enabled && settings.patterns.position === 'background' && settings.patterns.type !== 'none' && settings.patterns.opacity > 0) {
     applyPatternPipeline(ctx, w, h, settings.patterns);
@@ -102,11 +109,15 @@ export function applyAllFiltersToCanvas(
   const imgBlend: GlobalCompositeOperation = rawBlend === 'normal' ? 'source-over' : (rawBlend as GlobalCompositeOperation);
 
   if (imgOpacity > 0) {
+    const isFractalActive = settings.fractalGlass?.enabled && (settings.fractalGlass.opacity ?? 100) > 0;
+    const isGradientMapActive = settings.gradientMaker?.enabled && settings.gradientMaker.mode === '4';
+
     const isFocalBlur =
+      !isFractalActive &&
       settings.blur.enabled &&
       settings.blur.radius > 0 &&
       (settings.blur.category === 'radial' || settings.blur.category === 'tiltshift' || settings.blur.category === 'linear');
-    const isFullBlur = settings.blur.enabled && settings.blur.radius > 0 && !isFocalBlur;
+    const isFullBlur = !isFractalActive && settings.blur.enabled && settings.blur.radius > 0 && !isFocalBlur;
 
     const needBuffer = imgOpacity < 1 || rawBlend !== 'normal';
     const targetCtx = needBuffer
@@ -118,7 +129,23 @@ export function applyAllFiltersToCanvas(
       targetCtx.clearRect(0, 0, w, h);
     }
 
-    if (isFocalBlur) {
+    if (isGradientMapActive) {
+      // Direct Holographic Luminosity Gradient Map
+      applyGradientMakerPipeline(targetCtx, w, h, settings.gradientMaker, originalImage);
+
+      if (isFractalActive) {
+        // Compound: Refract the Gradient-Mapped Image through Fractal Glass
+        const mappedBuf = getPooledBuffer(w, h);
+        const mbCtx = mappedBuf.getContext('2d') as CanvasRenderingContext2D;
+        mbCtx.drawImage(targetCtx.canvas as any, 0, 0, w, h);
+        targetCtx.clearRect(0, 0, w, h);
+        applyFractalGlassEffect(targetCtx, w, h, mappedBuf as any, settings.fractalGlass, { isFastPreview });
+        releasePooledBuffer(mappedBuf);
+      }
+    } else if (isFractalActive) {
+      // Render Fractal Glass Refraction directly onto uploaded image
+      applyFractalGlassEffect(targetCtx, w, h, originalImage, settings.fractalGlass, { isFastPreview });
+    } else if (isFocalBlur) {
       // Draw sharp base first for focal zone, then composite masked blur on top
       targetCtx.drawImage(originalImage, 0, 0, w, h);
       applyBlurPipeline(targetCtx, w, h, settings.blur, originalImage);
@@ -140,9 +167,18 @@ export function applyAllFiltersToCanvas(
     }
   }
 
-  // 2. Apply Overlay Gradient (if gradient position is 'overlay' or default)
-  if (settings.gradient.enabled && settings.gradient.position !== 'background' && settings.gradient.stops.length > 0) {
-    applyGradientPipeline(ctx, w, h, settings.gradient);
+  // 1.5 Apply Overlay Gradient Maker (if enabled and position !== 'background' and mode !== '4')
+  if (settings.gradientMaker?.enabled && settings.gradientMaker.position !== 'background' && settings.gradientMaker.mode !== '4') {
+    applyGradientMakerPipeline(ctx, w, h, settings.gradientMaker, originalImage);
+  }
+
+  // 2. Apply Overlay Gradient (if gradient position is 'overlay' or if background gradient was occluded by solid photo)
+  const isOccludedBackdrop = settings.gradient.enabled && settings.gradient.position === 'background' && imgOpacity >= 1 && imgBlend === 'source-over' && !!originalImage;
+  if (settings.gradient.enabled && (settings.gradient.position !== 'background' || isOccludedBackdrop) && (settings.gradient.stops.length > 0 || settings.gradient.type === 'mesh')) {
+    const effectiveGrad = isOccludedBackdrop
+      ? { ...settings.gradient, blendMode: (settings.gradient.blendMode === 'normal' ? 'overlay' : settings.gradient.blendMode) || 'overlay', opacity: Math.min(75, settings.gradient.opacity || 75) }
+      : settings.gradient;
+    applyGradientPipeline(ctx, w, h, effectiveGrad);
   }
 
   // 3. Apply Overlay Patterns (if pattern position is 'overlay' or default)
@@ -347,7 +383,15 @@ function applyGradientPipeline(
   ctx.globalCompositeOperation = gradBlend;
   ctx.globalAlpha = Math.max(0, Math.min(100, gradient.opacity ?? 100)) / 100;
 
-  const sortedStops = [...gradient.stops]
+  const rawStops = gradient.stops && gradient.stops.length >= 2
+    ? gradient.stops
+    : [
+        { id: '1', color: '#00d2ff', position: 0 },
+        { id: '2', color: '#9d00ff', position: 50 },
+        { id: '3', color: '#ff007f', position: 100 },
+      ];
+
+  const sortedStops = [...rawStops]
     .sort((a, b) => a.position - b.position)
     .map(s => ({
       color: s.color,
@@ -384,36 +428,57 @@ function applyGradientPipeline(
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
   } else {
-    // 4-corner Bilinear Mesh Gradient
-    const [cTL, cTR, cBR, cBL] = gradient.meshColors;
+    // 4-corner Bilinear Mesh Gradient: Clean, non-muddy GPU-smoothed bilinear interpolation
+    const [cTL, cTR, cBR, cBL] = (gradient.meshColors && gradient.meshColors.length >= 4)
+      ? gradient.meshColors
+      : ['#00d2ff', '#9d00ff', '#ff007f', '#ff7a00'];
 
-    // Top-left radial
-    const g1 = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.hypot(w, h));
-    g1.addColorStop(0, cTL);
-    g1.addColorStop(1, 'transparent');
-    ctx.fillStyle = g1;
-    ctx.fillRect(0, 0, w, h);
+    const rgbTL = hexToRgb(cTL);
+    const rgbTR = hexToRgb(cTR);
+    const rgbBR = hexToRgb(cBR);
+    const rgbBL = hexToRgb(cBL);
 
-    // Top-right radial
-    const g2 = ctx.createRadialGradient(w, 0, 0, w, 0, Math.hypot(w, h));
-    g2.addColorStop(0, cTR);
-    g2.addColorStop(1, 'transparent');
-    ctx.fillStyle = g2;
-    ctx.fillRect(0, 0, w, h);
+    const gridSize = 32;
+    const offscreen = typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(gridSize, gridSize)
+      : document.createElement('canvas');
+    offscreen.width = gridSize;
+    offscreen.height = gridSize;
 
-    // Bottom-right radial
-    const g3 = ctx.createRadialGradient(w, h, 0, w, h, Math.hypot(w, h));
-    g3.addColorStop(0, cBR);
-    g3.addColorStop(1, 'transparent');
-    ctx.fillStyle = g3;
-    ctx.fillRect(0, 0, w, h);
+    const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+    const imgData = offCtx.createImageData(gridSize, gridSize);
+    const d = imgData.data;
 
-    // Bottom-left radial
-    const g4 = ctx.createRadialGradient(0, h, 0, 0, h, Math.hypot(w, h));
-    g4.addColorStop(0, cBL);
-    g4.addColorStop(1, 'transparent');
-    ctx.fillStyle = g4;
-    ctx.fillRect(0, 0, w, h);
+    for (let y = 0; y < gridSize; y++) {
+      const v = y / (gridSize - 1);
+      const invV = 1 - v;
+
+      for (let x = 0; x < gridSize; x++) {
+        const u = x / (gridSize - 1);
+        const invU = 1 - u;
+
+        const wTL = invU * invV;
+        const wTR = u * invV;
+        const wBL = invU * v;
+        const wBR = u * v;
+
+        const r = Math.round(wTL * rgbTL.r + wTR * rgbTR.r + wBL * rgbBL.r + wBR * rgbBR.r);
+        const g = Math.round(wTL * rgbTL.g + wTR * rgbTR.g + wBL * rgbBL.g + wBR * rgbBR.g);
+        const b = Math.round(wTL * rgbTL.b + wTR * rgbTR.b + wBL * rgbBL.b + wBR * rgbBR.b);
+
+        const idx = (y * gridSize + x) * 4;
+        d[idx] = r;
+        d[idx + 1] = g;
+        d[idx + 2] = b;
+        d[idx + 3] = 255;
+      }
+    }
+
+    offCtx.putImageData(imgData, 0, 0);
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(offscreen, 0, 0, w, h);
   }
 
   ctx.restore();
@@ -520,60 +585,93 @@ function applyPatternPipeline(
     return;
   }
 
+  // Full-bleed background fill if configured
+  if (pattern.backgroundColor && pattern.backgroundColor !== 'transparent') {
+    ctx.save();
+    ctx.globalCompositeOperation = pattern.blendMode as GlobalCompositeOperation;
+    ctx.globalAlpha = (pattern.opacity / 100) * 0.75;
+    ctx.fillStyle = pattern.backgroundColor;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+
   ctx.save();
   ctx.globalCompositeOperation = pattern.blendMode as GlobalCompositeOperation;
   ctx.globalAlpha = pattern.opacity / 100;
   ctx.strokeStyle = pattern.color;
   ctx.fillStyle = pattern.color;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = pattern.strokeWidth ?? 1.5;
 
   const step = Math.max(12, Math.round((pattern.scale / 100) * 80));
+  const pad = Math.max(80, step * 2);
+  const fillMode = pattern.fillMode || 'both';
+  const fillAlpha = (pattern.opacity / 100) * ((pattern.fillOpacity ?? 40) / 100);
 
   if (pattern.type === 'grid') {
-    ctx.beginPath();
-    for (let x = 0; x <= w; x += step) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
+    if (fillMode === 'fill' || fillMode === 'both') {
+      ctx.save();
+      ctx.fillStyle = pattern.color;
+      ctx.globalAlpha = fillAlpha;
+      for (let x = -pad; x <= w + pad; x += step) {
+        for (let y = -pad; y <= h + pad; y += step) {
+          if ((Math.abs(Math.round((x + pad) / step)) + Math.abs(Math.round((y + pad) / step))) % 2 === 0) {
+            ctx.fillRect(x, y, step, step);
+          }
+        }
+      }
+      ctx.restore();
     }
-    for (let y = 0; y <= h; y += step) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
+    if (fillMode !== 'fill') {
+      ctx.beginPath();
+      for (let x = -pad; x <= w + pad; x += step) {
+        ctx.moveTo(x, -pad);
+        ctx.lineTo(x, h + pad);
+      }
+      for (let y = -pad; y <= h + pad; y += step) {
+        ctx.moveTo(-pad, y);
+        ctx.lineTo(w + pad, y);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
   } else if (pattern.type === 'dots') {
-    const dotRadius = Math.max(1, step * 0.12);
-    for (let x = step / 2; x < w; x += step) {
-      for (let y = step / 2; y < h; y += step) {
+    const dotRadius = Math.max(1.5, step * 0.14);
+    for (let x = -pad; x <= w + pad; x += step) {
+      for (let y = -pad; y <= h + pad; y += step) {
         ctx.beginPath();
         ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-        ctx.fill();
+        if (fillMode === 'stroke') {
+          ctx.stroke();
+        } else {
+          ctx.fill();
+        }
       }
     }
   } else if (pattern.type === 'hexagons') {
     const r = step * 0.65;
     const hDist = r * Math.sqrt(3);
-    for (let row = 0; row * r * 1.5 < h + r; row++) {
+    for (let row = -2; row * r * 1.5 < h + pad; row++) {
       const y = row * r * 1.5;
-      const xOffset = (row % 2) * (hDist / 2);
-      for (let col = -1; col * hDist < w + hDist; col++) {
+      const xOffset = (Math.abs(row) % 2) * (hDist / 2);
+      for (let col = -2; col * hDist < w + pad; col++) {
         const x = col * hDist + xOffset;
-        drawHexagon(ctx, x, y, r);
+        drawHexagon(ctx, x, y, r, fillMode, fillAlpha, pattern.color);
       }
     }
   } else if (pattern.type === 'isometric') {
+    const maxDim = Math.hypot(w, h) + pad;
     ctx.beginPath();
-    for (let i = -w; i < w + h; i += step * 1.5) {
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i + h * 0.577, h);
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i - h * 0.577, h);
+    for (let i = -maxDim; i <= maxDim; i += step * 1.5) {
+      ctx.moveTo(i, -pad);
+      ctx.lineTo(i + maxDim * 0.577, h + pad);
+      ctx.moveTo(i, -pad);
+      ctx.lineTo(i - maxDim * 0.577, h + pad);
     }
     ctx.stroke();
   } else if (pattern.type === 'mandelbrot' || pattern.type === 'julia') {
     // Mathematical Fractal Synthesis
     drawFractalOverlay(ctx, w, h, pattern.type, pattern.color, pattern.scale);
   } else if (pattern.type === 'lightning') {
-    // Electric Fractal Branching Synthesis
+    // Electric Fractal Branching Synthesis across entire canvas
     drawElectricLightningFractal(ctx, w, h, pattern.color, pattern.scale);
   }
 
@@ -584,7 +682,10 @@ function drawHexagon(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   x: number,
   y: number,
-  radius: number
+  radius: number,
+  fillMode?: string,
+  fillAlpha?: number,
+  fillColor?: string
 ) {
   ctx.beginPath();
   for (let i = 0; i < 6; i++) {
@@ -595,7 +696,16 @@ function drawHexagon(
     else ctx.lineTo(px, py);
   }
   ctx.closePath();
-  ctx.stroke();
+  if (fillMode === 'fill' || fillMode === 'both') {
+    ctx.save();
+    ctx.fillStyle = fillColor || '#00f0ff';
+    ctx.globalAlpha = fillAlpha ?? 0.35;
+    ctx.fill();
+    ctx.restore();
+  }
+  if (fillMode !== 'fill') {
+    ctx.stroke();
+  }
 }
 
 /**
@@ -733,11 +843,13 @@ function drawElectricLightningFractal(
   }
 
   const startPoints = [
-    { x: w * 0.98, y: h * 0.22, angle: Math.PI * 0.92, len: w * 0.45 },
-    { x: w * 0.95, y: h * 0.50, angle: Math.PI * 0.88, len: w * 0.55 },
-    { x: w * 0.85, y: h * 0.75, angle: Math.PI * 0.98, len: w * 0.40 },
-    { x: w * 0.60, y: h * 0.85, angle: Math.PI * 1.05, len: w * 0.35 },
-    { x: w * 0.45, y: h * 0.92, angle: Math.PI * 1.15, len: w * 0.30 },
+    { x: w * 0.98, y: h * 0.22, angle: Math.PI * 0.92, len: w * 0.55 },
+    { x: w * 0.95, y: h * 0.50, angle: Math.PI * 0.88, len: w * 0.60 },
+    { x: w * 0.85, y: h * 0.75, angle: Math.PI * 0.98, len: w * 0.50 },
+    { x: w * 0.05, y: h * 0.25, angle: Math.PI * 0.15, len: w * 0.55 },
+    { x: w * 0.10, y: h * 0.65, angle: Math.PI * 0.05, len: w * 0.50 },
+    { x: w * 0.50, y: h * 0.05, angle: Math.PI * 0.50, len: h * 0.65 },
+    { x: w * 0.50, y: h * 0.95, angle: -Math.PI * 0.50, len: h * 0.65 },
   ];
 
   startPoints.forEach((sp, idx) => {

@@ -89,54 +89,62 @@ export const AutoImageToGradient: React.FC<AutoImageToGradientProps> = ({
     setActivePresetId(type);
     if (!extractedData) return;
 
+    const overlayBlend = (settings.gradient.blendMode === 'normal' ? 'overlay' : settings.gradient.blendMode) || 'overlay';
+
     if (type === 'mesh') {
       onUpdateSettings('gradient', {
         enabled: true,
         type: 'mesh',
-        position: 'background',
+        position: 'overlay',
+        blendMode: overlayBlend,
         meshColors: extractedData.quadrants,
         stops: extractedData.linearStops,
-        opacity: Math.max(70, settings.gradient.opacity || 85),
+        opacity: Math.max(65, settings.gradient.opacity || 75),
       });
     } else if (type === 'linear') {
       onUpdateSettings('gradient', {
         enabled: true,
         type: 'linear',
         angle: 135,
-        position: 'background',
+        position: 'overlay',
+        blendMode: overlayBlend,
         stops: extractedData.linearStops,
-        opacity: Math.max(75, settings.gradient.opacity || 85),
+        opacity: Math.max(65, settings.gradient.opacity || 75),
       });
     } else if (type === 'radial') {
       onUpdateSettings('gradient', {
         enabled: true,
         type: 'radial',
-        position: 'background',
+        position: 'overlay',
+        blendMode: overlayBlend,
         stops: extractedData.radialStops,
-        opacity: Math.max(75, settings.gradient.opacity || 85),
+        opacity: Math.max(65, settings.gradient.opacity || 75),
       });
     } else if (type === 'conical') {
       onUpdateSettings('gradient', {
         enabled: true,
         type: 'conical',
-        position: 'background',
+        position: 'overlay',
+        blendMode: overlayBlend,
         stops: extractedData.conicStops,
-        opacity: Math.max(75, settings.gradient.opacity || 85),
+        opacity: Math.max(65, settings.gradient.opacity || 75),
       });
     } else if (type === 'duotone') {
       onUpdateSettings('gradient', {
         enabled: true,
         type: 'linear',
         angle: 90,
-        position: 'background',
+        position: 'overlay',
+        blendMode: overlayBlend,
         stops: extractedData.duotoneStops,
-        opacity: Math.max(75, settings.gradient.opacity || 85),
+        opacity: Math.max(65, settings.gradient.opacity || 75),
       });
     } else if (type === 'soft') {
       onUpdateSettings('gradient', {
         enabled: true,
         type: 'mesh',
-        position: 'background',
+        position: 'overlay',
+        blendMode: 'soft-light',
         meshColors: [
           extractedData.palette[1] || '#38bdf8',
           extractedData.palette[2] || '#c084fc',
@@ -476,24 +484,32 @@ export const AutoImageToGradient: React.FC<AutoImageToGradientProps> = ({
             </span>
             <div className="grid grid-cols-2 gap-1">
               <button
-                onClick={() => onUpdateSettings('gradient', { position: 'background' })}
+                onClick={() => {
+                  onUpdateSettings('gradient', { position: 'background' });
+                  if (imageOpacity >= 95) {
+                    onUpdateSettings('image', { opacity: 70 });
+                  }
+                }}
                 className={`px-1.5 py-1 rounded-lg text-[9.5px] font-medium transition text-center ${
                   gradientPosition === 'background'
                     ? 'bg-cyan-400 text-dark-950 font-bold'
                     : 'bg-dark-900 text-slate-400 hover:text-white border border-white/5'
                 }`}
-                title="ইমেজ ব্যাকগ্রাউন্ড গ্রেডিয়েন্টের উপরে থাকবে, অপাসিটি কমালে গ্রেডিয়েন্ট দেখা যাবে"
+                title="ইমেজ ব্যাকগ্রাউন্ড গ্রেডিয়েন্টের উপরে থাকবে (স্বয়ংক্রিয়ভাবে ৭০% অপাসিটি হবে)"
               >
-                🖼️ On Grad
+                🖼️ Behind
               </button>
               <button
-                onClick={() => onUpdateSettings('gradient', { position: 'overlay' })}
+                onClick={() => onUpdateSettings('gradient', {
+                  position: 'overlay',
+                  blendMode: (settings.gradient.blendMode === 'normal' ? 'overlay' : settings.gradient.blendMode) || 'overlay'
+                })}
                 className={`px-1.5 py-1 rounded-lg text-[9.5px] font-medium transition text-center ${
                   gradientPosition === 'overlay'
                     ? 'bg-cyan-400 text-dark-950 font-bold'
                     : 'bg-dark-900 text-slate-400 hover:text-white border border-white/5'
                 }`}
-                title="গ্রেডিয়েন্ট ছবির উপরে কালার ফিল্টার হিসেবে কাজ করবে"
+                title="গ্রেডিয়েন্ট সরাসরি ছবির উপরে লাইভ ব্লেন্ড হবে"
               >
                 🎨 Overlay
               </button>

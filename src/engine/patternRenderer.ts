@@ -3,7 +3,7 @@ import { PatternItem, PATTERN_MAP } from './patternLibrary';
 
 /**
  * Procedural Vector Pattern Rendering Engine
- * Synthesizes high-performance Canvas 2D mathematical geometries
+ * Synthesizes high-performance Canvas 2D mathematical geometries with full-bleed edge-to-edge coverage and solid/both fill modes
  */
 export function renderProceduralPattern(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
@@ -16,17 +16,17 @@ export function renderProceduralPattern(
   const color = settings.color || '#ffffff';
   const bgColor = settings.backgroundColor;
   const scale = settings.scale || 50;
-  const strokeWidth = settings.strokeWidth ?? 1;
+  const strokeWidth = settings.strokeWidth ?? 1.5;
   const rotation = settings.rotation ?? 0;
   const offsetX = settings.offsetX ?? 0;
   const offsetY = settings.offsetY ?? 0;
   const glow = settings.glow ?? 0;
   const glowColor = settings.glowColor || color;
 
-  // Optional background tile / fill tint
+  // 1. Full-bleed background tile / fill tint
   if (bgColor && bgColor !== 'transparent') {
     ctx.save();
-    ctx.globalAlpha = (settings.opacity / 100) * 0.75;
+    ctx.globalAlpha = (settings.opacity / 100) * 0.85;
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
@@ -35,20 +35,18 @@ export function renderProceduralPattern(
   // Base dimension calculations
   const baseStep = Math.max(10, Math.round((scale / 100) * 80));
   const step = Math.round(baseStep * (item?.params.stepMultiplier || 1.0));
-  const density = item?.params.density || 24;
   const totalAngleDeg = (item?.params.angle || 0) + rotation;
   const totalAngleRad = (totalAngleDeg % 360) * (Math.PI / 180);
   const variant = item?.params.variant || 0;
   const harmonics = item?.params.harmonics || 2;
   const family = item?.family || 'grid';
 
-  // If 3D Mode is enabled on any pattern (all 500 patterns support 3D volumetric extrusion),
-  // process through 3D Volumetric Depth Engine!
+  // 2. 3D Volumetric Depth Engine
   if (settings.is3D) {
     renderWith3DDepthEngine(ctx, w, h, settings, (bCtx, bw, bh) => {
       bCtx.save();
-      const hasTransform = totalAngleRad !== 0 || offsetX !== 0 || offsetY !== 0;
-      const boundPad = hasTransform ? Math.round(Math.hypot(bw, bh) * 0.5) : 0;
+      const diag = Math.hypot(bw, bh);
+      const boundPad = Math.round(diag * 0.55);
 
       bCtx.translate(bw / 2 + offsetX, bh / 2 + offsetY);
       if (totalAngleRad !== 0) {
@@ -84,9 +82,9 @@ export function renderProceduralPattern(
     ctx.shadowBlur = glow;
   }
 
-  // Bounding pad calculation to prevent corner gaps when rotated or shifted
-  const hasTransform = totalAngleRad !== 0 || offsetX !== 0 || offsetY !== 0;
-  const boundPad = hasTransform ? Math.round(Math.hypot(w, h) * 0.5) : 0;
+  // Guaranteed full-bleed coverage pad to prevent edge gaps, corner clips, or rotation artifacts
+  const diag = Math.hypot(w, h);
+  const boundPad = Math.round(diag * 0.55);
 
   // Apply offset translation + rotation around center
   ctx.translate(w / 2 + offsetX, h / 2 + offsetY);
@@ -104,7 +102,7 @@ export function renderProceduralPattern(
 }
 
 /**
- * Renders pattern family vector geometries
+ * Renders pattern family vector geometries with full fill & stroke support
  */
 function renderPatternFamilyGeometry(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
@@ -126,72 +124,71 @@ function renderPatternFamilyGeometry(
     case 'hexagons':
     case 'triangles':
     case 'diamonds': {
-      drawPolygonalLattice(ctx, drawW, drawH, step, variant);
+      drawPolygonalLattice(ctx, drawW, drawH, step, variant, settings);
       break;
     }
 
     case 'lines': {
-      drawLineLattice(ctx, drawW, drawH, step, variant, item?.params.lineRatio || 0.5);
+      drawLineLattice(ctx, drawW, drawH, step, variant, item?.params.lineRatio || 0.5, settings);
       break;
     }
 
     case 'sacred':
     case 'circles': {
-      drawSacredCircles(ctx, drawW, drawH, step, harmonics, variant);
+      drawSacredCircles(ctx, drawW, drawH, step, harmonics, variant, settings);
       break;
     }
 
     case 'tech': {
-      drawCircuitTechGrid(ctx, drawW, drawH, step, variant);
+      drawCircuitTechGrid(ctx, drawW, drawH, step, variant, settings);
       break;
     }
 
     case 'waves': {
-      drawWaveContours(ctx, drawW, drawH, step, harmonics, variant);
+      drawWaveContours(ctx, drawW, drawH, step, harmonics, variant, settings);
       break;
     }
 
     case 'dots': {
-      drawHalftoneDots(ctx, drawW, drawH, step, variant, item?.params.lineRatio || 0.3);
+      drawHalftoneDots(ctx, drawW, drawH, step, variant, item?.params.lineRatio || 0.3, settings);
       break;
     }
 
     case 'tiles':
     case 'weave': {
-      drawWeaveAndTiles(ctx, drawW, drawH, step, variant);
+      drawWeaveAndTiles(ctx, drawW, drawH, step, variant, settings);
       break;
     }
 
     case 'stars': {
-      drawCelestialStars(ctx, drawW, drawH, step, harmonics, variant);
+      drawCelestialStars(ctx, drawW, drawH, step, harmonics, variant, settings);
       break;
     }
 
     case 'optical': {
-      drawOpticalIllusions(ctx, drawW, drawH, step, harmonics, variant);
+      drawOpticalIllusions(ctx, drawW, drawH, step, harmonics, variant, settings);
       break;
     }
 
     case 'organic': {
-      drawOrganicCellular(ctx, drawW, drawH, step, variant);
+      drawOrganicCellular(ctx, drawW, drawH, step, variant, settings);
       break;
     }
 
     case 'fractal': {
-      drawFractalBranches(ctx, drawW, drawH, step, harmonics, variant);
+      drawFractalBranches(ctx, drawW, drawH, step, harmonics, variant, settings);
       break;
     }
 
     default: {
-      drawBasicGrid(ctx, drawW, drawH, step);
+      drawBasicGrid(ctx, drawW, drawH, step, settings);
       break;
     }
   }
 }
 
 /**
- * Universal 3D Volumetric Depth Engine
- * Applies perspective pitch, yaw, light angle shading, and multi-slice extrusion to ANY pattern
+ * Universal 3D Volumetric Depth Engine with 100% Full-Bleed Edge-to-Edge Overscan
  */
 function renderWith3DDepthEngine(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
@@ -210,35 +207,42 @@ function renderWith3DDepthEngine(
   const lx = Math.cos(lightAngle);
   const ly = Math.sin(lightAngle);
 
+  // Calculate 3D foreshortening overscan factor to prevent blank borders
+  const cosPitch = Math.cos(pitch);
+  const sinPitch = Math.sin(pitch);
+  const cosYaw = Math.cos(yaw);
+  const sinYaw = Math.sin(yaw);
+
+  const overscan = Math.max(1.35, 1 / Math.max(0.35, Math.min(Math.abs(cosPitch), Math.abs(cosYaw))));
+  const bw = Math.round(w * overscan);
+  const bh = Math.round(h * overscan);
+
   // Draw 2D pattern geometry into offscreen buffer
-  const buf = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(w, h) : document.createElement('canvas');
-  buf.width = w;
-  buf.height = h;
+  const buf = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(bw, bh) : document.createElement('canvas');
+  buf.width = bw;
+  buf.height = bh;
   const bCtx = buf.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   if (!bCtx) return;
 
   bCtx.strokeStyle = settings.color || '#00f0ff';
   bCtx.fillStyle = settings.color || '#00f0ff';
   bCtx.lineWidth = Math.max(0.5, Math.min(12, settings.strokeWidth ?? 1.5));
-  drawGeometryFn(bCtx, w, h);
+  drawGeometryFn(bCtx, bw, bh);
 
   ctx.save();
   const rawBlend = settings.blendMode || 'overlay';
   const compOp: GlobalCompositeOperation = rawBlend === 'normal' ? 'source-over' : (rawBlend as GlobalCompositeOperation);
   ctx.globalCompositeOperation = compOp;
 
-  // 3D Perspective affine transform
-  const cosPitch = Math.cos(pitch);
-  const sinPitch = Math.sin(pitch);
-  const cosYaw = Math.cos(yaw);
-  const sinYaw = Math.sin(yaw);
-
+  // 3D Perspective affine transform centered on canvas
   ctx.translate(w / 2, h / 2);
   ctx.transform(cosYaw, sinYaw * sinPitch, -sinYaw * 0.25, cosPitch, 0, 0);
   ctx.translate(-w / 2, -h / 2);
 
+  const drawOffsetX = (w - bw) / 2;
+  const drawOffsetY = (h - bh) / 2;
+
   if (shading === 'extrude' && depth > 0) {
-    // Multi-layer volumetric depth extrusion with directional light-shading
     const slices = Math.min(24, Math.max(3, Math.round(depth)));
     const stepX = (lx * depth) / slices;
     const stepY = (ly * depth) / slices;
@@ -247,11 +251,10 @@ function renderWith3DDepthEngine(
       ctx.save();
       const shade = 0.25 + 0.65 * (1 - i / slices);
       ctx.globalAlpha = (settings.opacity / 100) * 0.5 * shade;
-      ctx.drawImage(buf, stepX * i, stepY * i);
+      ctx.drawImage(buf, drawOffsetX + stepX * i, drawOffsetY + stepY * i);
       ctx.restore();
     }
   } else if (shading === 'isometric' && depth > 0) {
-    // 30° Axonometric dual-facet isometric projection
     const slices = Math.min(18, Math.max(3, Math.round(depth * 0.85)));
     const isoX = Math.cos(Math.PI / 6) * (depth / slices);
     const isoY = Math.sin(Math.PI / 6) * (depth / slices);
@@ -260,36 +263,33 @@ function renderWith3DDepthEngine(
       ctx.save();
       const shade = 0.2 + 0.55 * (1 - i / slices);
       ctx.globalAlpha = (settings.opacity / 100) * 0.55 * shade;
-      ctx.drawImage(buf, isoX * i, isoY * i);
+      ctx.drawImage(buf, drawOffsetX + isoX * i, drawOffsetY + isoY * i);
       ctx.restore();
     }
   } else if (shading === 'perspective' && depth > 0) {
-    // Horizon spatial vanishing point depth projection with gradient atmospheric falloff
     const slices = Math.min(20, Math.max(3, Math.round(depth)));
     for (let i = slices; i >= 1; i--) {
       ctx.save();
       const falloff = 1 - i / slices;
       ctx.globalAlpha = (settings.opacity / 100) * 0.45 * (0.2 + 0.8 * falloff);
       const shiftY = (depth * 1.4 * i) / slices;
-      ctx.drawImage(buf, 0, shiftY);
+      ctx.drawImage(buf, drawOffsetX, drawOffsetY + shiftY);
       ctx.restore();
     }
   } else if (shading === 'emboss') {
-    // 3D Chiseled Bas-Relief with dual highlight and dark relief shadow
     ctx.save();
     ctx.globalAlpha = (settings.opacity / 100) * 0.6;
-    ctx.drawImage(buf, lx * 3, ly * 3); // dark relief shadow
+    ctx.drawImage(buf, drawOffsetX + lx * 3, drawOffsetY + ly * 3);
     ctx.globalCompositeOperation = 'screen';
-    ctx.drawImage(buf, -lx * 2, -ly * 2); // bright specular highlight
+    ctx.drawImage(buf, drawOffsetX - lx * 2, drawOffsetY - ly * 2);
     ctx.restore();
   } else if (shading === 'wireframe') {
-    // 3D Holographic Wireframe with dual neon rim projection
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
     ctx.globalAlpha = (settings.opacity / 100) * 0.7;
-    ctx.drawImage(buf, lx * 4, ly * 4);
+    ctx.drawImage(buf, drawOffsetX + lx * 4, drawOffsetY + ly * 4);
     ctx.globalAlpha = (settings.opacity / 100) * 0.4;
-    ctx.drawImage(buf, -lx * 4, -ly * 4);
+    ctx.drawImage(buf, drawOffsetX - lx * 4, drawOffsetY - ly * 4);
     ctx.restore();
   }
 
@@ -300,7 +300,7 @@ function renderWith3DDepthEngine(
     ctx.shadowColor = settings.glowColor || settings.color || '#00f0ff';
     ctx.shadowBlur = settings.glow ?? 0;
   }
-  ctx.drawImage(buf, 0, 0);
+  ctx.drawImage(buf, drawOffsetX, drawOffsetY);
   ctx.restore();
 
   ctx.restore();
@@ -320,17 +320,20 @@ function draw3DVolumetricPatterns(
 ) {
   const depth = settings.depth3D ?? 15;
   const sub = variant % 8;
+  const fillMode = settings.fillMode || 'both';
+  const fillAlpha = (settings.opacity / 100) * ((settings.fillOpacity ?? 45) / 100);
 
   if (sub === 0) {
-    // 3D Isometric Cube Voxels with 3-tone facet lighting
+    // 3D Isometric Cube Voxels with 3-tone facet lighting across full canvas
     const s = Math.max(16, step * 0.8);
     const hDist = s * Math.sqrt(3);
     const vDist = s * 1.5;
+    const pad = Math.max(80, s * 3);
 
-    for (let y = -s; y < h + s * 2; y += vDist) {
+    for (let y = -pad; y < h + pad; y += vDist) {
       const row = Math.floor(y / vDist);
-      const xOffset = (row % 2) * (hDist / 2);
-      for (let x = -hDist; x < w + hDist * 2; x += hDist) {
+      const xOffset = (Math.abs(row) % 2) * (hDist / 2);
+      for (let x = -pad; x < w + pad; x += hDist) {
         const cx = x + xOffset;
         const cy = y;
 
@@ -341,7 +344,14 @@ function draw3DVolumetricPatterns(
         ctx.lineTo(cx, cy);
         ctx.lineTo(cx - hDist / 2, cy - s / 2);
         ctx.closePath();
-        ctx.stroke();
+        if (fillMode === 'fill' || fillMode === 'both') {
+          ctx.save();
+          ctx.fillStyle = settings.color;
+          ctx.globalAlpha = fillAlpha * 0.9;
+          ctx.fill();
+          ctx.restore();
+        }
+        if (fillMode !== 'fill') ctx.stroke();
 
         // Left vertical face
         ctx.beginPath();
@@ -350,7 +360,14 @@ function draw3DVolumetricPatterns(
         ctx.lineTo(cx, cy + s);
         ctx.lineTo(cx - hDist / 2, cy + s / 2);
         ctx.closePath();
-        ctx.stroke();
+        if (fillMode === 'fill' || fillMode === 'both') {
+          ctx.save();
+          ctx.fillStyle = settings.color;
+          ctx.globalAlpha = fillAlpha * 0.6;
+          ctx.fill();
+          ctx.restore();
+        }
+        if (fillMode !== 'fill') ctx.stroke();
 
         // Right vertical face
         ctx.beginPath();
@@ -359,7 +376,14 @@ function draw3DVolumetricPatterns(
         ctx.lineTo(cx, cy + s);
         ctx.lineTo(cx + hDist / 2, cy + s / 2);
         ctx.closePath();
-        ctx.stroke();
+        if (fillMode === 'fill' || fillMode === 'both') {
+          ctx.save();
+          ctx.fillStyle = settings.color;
+          ctx.globalAlpha = fillAlpha * 0.35;
+          ctx.fill();
+          ctx.restore();
+        }
+        if (fillMode !== 'fill') ctx.stroke();
       }
     }
   } else if (sub === 1) {
@@ -367,14 +391,14 @@ function draw3DVolumetricPatterns(
     const r = Math.max(14, step * 0.6);
     const hDist = r * Math.sqrt(3);
     const ext = Math.max(8, depth);
+    const pad = Math.max(80, r * 3);
 
-    for (let row = 0; row * r * 1.5 < h + r * 2; row++) {
+    for (let row = -2; row * r * 1.5 < h + pad; row++) {
       const y = row * r * 1.5;
-      const xOffset = (row % 2) * (hDist / 2);
-      for (let col = -1; col * hDist < w + hDist * 2; col++) {
+      const xOffset = (Math.abs(row) % 2) * (hDist / 2);
+      for (let col = -2; col * hDist < w + pad; col++) {
         const x = col * hDist + xOffset;
 
-        // Top hexagon cap
         ctx.beginPath();
         for (let i = 0; i < 6; i++) {
           const a = (Math.PI / 3) * i - Math.PI / 6;
@@ -384,9 +408,15 @@ function draw3DVolumetricPatterns(
           else ctx.lineTo(px, py);
         }
         ctx.closePath();
-        ctx.stroke();
+        if (fillMode === 'fill' || fillMode === 'both') {
+          ctx.save();
+          ctx.fillStyle = settings.color;
+          ctx.globalAlpha = fillAlpha * 0.8;
+          ctx.fill();
+          ctx.restore();
+        }
+        if (fillMode !== 'fill') ctx.stroke();
 
-        // Extruded vertical pillar edges
         for (let i = 1; i <= 3; i++) {
           const a = (Math.PI / 3) * i - Math.PI / 6;
           const px = x + r * Math.cos(a);
@@ -402,41 +432,37 @@ function draw3DVolumetricPatterns(
     // 3D Cyber Horizon Wireframe (Synthwave Perspective Grid)
     const horizonY = h * 0.45;
     const vanishX = w / 2;
-
-    // Perspective rays receding into distance
-    const rays = 28;
+    const rays = 36;
     for (let i = -rays; i <= rays; i++) {
-      const bottomX = vanishX + i * (w / (rays * 0.7));
+      const bottomX = vanishX + i * (w / (rays * 0.65));
       ctx.beginPath();
       ctx.moveTo(vanishX, horizonY);
-      ctx.lineTo(bottomX, h);
+      ctx.lineTo(bottomX, h + 100);
       ctx.stroke();
     }
-
-    // Perspective distance lines with exponential compression
-    let curY = h;
-    let dist = 32;
+    let curY = h + 100;
+    let dist = 36;
     while (curY > horizonY + 2) {
       ctx.beginPath();
-      ctx.moveTo(0, curY);
-      ctx.lineTo(w, curY);
+      ctx.moveTo(-100, curY);
+      ctx.lineTo(w + 100, curY);
       ctx.stroke();
       curY -= dist;
       dist = Math.max(2, dist * 0.78);
     }
   } else if (sub === 3) {
-    // 3D Torus Vortex / Nested Elliptic Rings in Perspective
+    // 3D Torus Vortex / Nested Elliptic Rings out to full canvas corners
     const cx = w / 2;
     const cy = h / 2;
-    const rings = 16;
+    const rings = 20;
+    const maxRadius = Math.hypot(w, h) * 0.7;
     for (let i = 1; i <= rings; i++) {
-      const rx = (i / rings) * (w * 0.48);
+      const rx = (i / rings) * maxRadius;
       const ry = rx * 0.45;
       ctx.beginPath();
       ctx.ellipse(cx, cy + (i * 2.5), rx, ry, 0, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Helical perspective ribs
       for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
         const px = cx + rx * Math.cos(a);
         const py = cy + (i * 2.5) + ry * Math.sin(a);
@@ -446,70 +472,22 @@ function draw3DVolumetricPatterns(
         ctx.stroke();
       }
     }
-  } else if (sub === 4) {
-    // 3D Pyramidal Bas-Relief
-    const s = Math.max(20, step);
-    for (let x = 0; x < w + s; x += s) {
-      for (let y = 0; y < h + s; y += s) {
-        const apexX = x + s / 2;
-        const apexY = y + s / 2 - (depth * 0.4);
+  } else {
+    // Pyramidal Bas-Relief
+    const s = Math.max(24, step);
+    const pad = Math.max(80, s * 2);
+    for (let x = -pad; x < w + pad; x += s) {
+      for (let y = -pad; y < h + pad; y += s) {
         ctx.beginPath();
         ctx.rect(x, y, s, s);
+        ctx.stroke();
+        ctx.beginPath();
         ctx.moveTo(x, y);
-        ctx.lineTo(apexX, apexY);
-        ctx.moveTo(x + s, y);
-        ctx.lineTo(apexX, apexY);
-        ctx.moveTo(x + s, y + s);
-        ctx.lineTo(apexX, apexY);
+        ctx.lineTo(x + s * 0.5, y + s * 0.5);
+        ctx.lineTo(x + s, y);
         ctx.moveTo(x, y + s);
-        ctx.lineTo(apexX, apexY);
-        ctx.stroke();
-      }
-    }
-  } else if (sub === 5) {
-    // 3D Geodesic Icosahedron Field
-    const s = Math.max(28, step * 1.2);
-    for (let x = s / 2; x < w + s; x += s * 1.5) {
-      for (let y = s / 2; y < h + s; y += s * 1.5) {
-        const r = s * 0.45;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.ellipse(x, y, r, r * 0.5, Math.PI / 4, 0, Math.PI * 2);
-        ctx.ellipse(x, y, r, r * 0.5, -Math.PI / 4, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    }
-  } else if (sub === 6) {
-    // 3D Topographic Elevation Slices
-    const layers = 10;
-    for (let l = 0; l < layers; l++) {
-      const curDepth = l * (depth * 0.3);
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 15) {
-        const freq = 0.008;
-        const y = h * 0.3 + l * 35 + Math.sin(x * freq + l * 0.8) * 25 + Math.cos(x * freq * 2) * 15 - curDepth;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-  } else {
-    // 3D Ribbon Wave Mesh / Wormhole
-    const cx = w / 2;
-    const cy = h / 2;
-    const count = 18;
-    for (let i = 1; i <= count; i++) {
-      const rad = Math.max(10, (i / count) * (Math.min(w, h) * 0.5));
-      ctx.beginPath();
-      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-      ctx.stroke();
-
-      const spokes = 12;
-      for (let s = 0; s < spokes; s++) {
-        const angle = (Math.PI * 2 * s) / spokes;
-        ctx.beginPath();
-        ctx.moveTo(cx + (rad - 15) * Math.cos(angle), cy + (rad - 15) * Math.sin(angle));
-        ctx.lineTo(cx + rad * Math.cos(angle), cy + rad * Math.sin(angle));
+        ctx.lineTo(x + s * 0.5, y + s * 0.5);
+        ctx.lineTo(x + s, y + s);
         ctx.stroke();
       }
     }
@@ -524,19 +502,23 @@ function drawPolygonalLattice(
   w: number,
   h: number,
   step: number,
-  variant: number
+  variant: number,
+  settings: FilterSettings['patterns']
 ) {
   const r = Math.max(12, step * 0.7);
   const hDist = r * Math.sqrt(3);
-  ctx.beginPath();
+  const pad = Math.max(80, Math.round(r * 3));
+  const fillMode = settings.fillMode || 'both';
+  const fillAlpha = (settings.opacity / 100) * ((settings.fillOpacity ?? 40) / 100);
 
-  for (let row = -1; row * r * 1.5 < h + r * 2; row++) {
+  for (let row = -2; row * r * 1.5 < h + pad; row++) {
     const y = row * r * 1.5;
-    const xOffset = (row % 2) * (hDist / 2);
+    const xOffset = (Math.abs(row) % 2) * (hDist / 2);
 
-    for (let col = -1; col * hDist < w + hDist * 2; col++) {
+    for (let col = -2; col * hDist < w + pad; col++) {
       const x = col * hDist + xOffset;
 
+      ctx.beginPath();
       if (variant % 3 === 0) {
         // Hexagon
         for (let i = 0; i < 6; i++) {
@@ -557,13 +539,6 @@ function drawPolygonalLattice(
           else ctx.lineTo(px, py);
         }
         ctx.closePath();
-        // Inner Y lines
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y - r);
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + r * Math.cos(Math.PI / 6), y + r * Math.sin(Math.PI / 6));
-        ctx.moveTo(x, y);
-        ctx.lineTo(x - r * Math.cos(Math.PI / 6), y + r * Math.sin(Math.PI / 6));
       } else {
         // Diamond / Rhombus
         ctx.moveTo(x, y - r);
@@ -572,9 +547,30 @@ function drawPolygonalLattice(
         ctx.lineTo(x - r * 0.8, y);
         ctx.closePath();
       }
+
+      if (fillMode === 'fill' || fillMode === 'both') {
+        ctx.save();
+        ctx.globalAlpha = fillAlpha;
+        ctx.fillStyle = settings.color;
+        ctx.fill();
+        ctx.restore();
+      }
+      if (fillMode !== 'fill') {
+        ctx.stroke();
+      }
+
+      if (variant % 3 === 1 && fillMode !== 'fill') {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y - r);
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + r * Math.cos(Math.PI / 6), y + r * Math.sin(Math.PI / 6));
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - r * Math.cos(Math.PI / 6), y + r * Math.sin(Math.PI / 6));
+        ctx.stroke();
+      }
     }
   }
-  ctx.stroke();
 }
 
 /**
@@ -586,46 +582,76 @@ function drawLineLattice(
   h: number,
   step: number,
   variant: number,
-  ratio: number
+  ratio: number,
+  settings: FilterSettings['patterns']
 ) {
-  ctx.beginPath();
   const s = Math.max(8, step * 0.6);
+  const pad = Math.max(100, Math.round(Math.hypot(w, h) * 0.5));
+  const fillMode = settings.fillMode || 'both';
+  const fillAlpha = (settings.opacity / 100) * ((settings.fillOpacity ?? 40) / 100);
 
   if (variant % 4 === 0) {
-    // Vertical Pinstripes
-    for (let x = 0; x <= w; x += s) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
+    if (fillMode === 'fill' || fillMode === 'both') {
+      ctx.save();
+      ctx.fillStyle = settings.color;
+      ctx.globalAlpha = fillAlpha;
+      for (let x = -pad; x <= w + pad; x += s * 2) {
+        ctx.fillRect(x, -pad, s, h + pad * 2);
+      }
+      ctx.restore();
+    }
+    if (fillMode !== 'fill') {
+      ctx.beginPath();
+      for (let x = -pad; x <= w + pad; x += s) {
+        ctx.moveTo(x, -pad);
+        ctx.lineTo(x, h + pad);
+      }
+      ctx.stroke();
     }
   } else if (variant % 4 === 1) {
-    // 45° Diagonal Lines
-    const maxDim = Math.hypot(w, h);
+    const maxDim = Math.hypot(w, h) + pad;
+    ctx.beginPath();
     for (let i = -maxDim; i <= maxDim; i += s) {
-      ctx.moveTo(i, 0);
+      ctx.moveTo(i, -pad);
       ctx.lineTo(i + maxDim, maxDim);
     }
+    ctx.stroke();
   } else if (variant % 4 === 2) {
-    // Fine Crosshatch
-    for (let x = 0; x <= w; x += s) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
+    if (fillMode === 'fill' || fillMode === 'both') {
+      ctx.save();
+      ctx.fillStyle = settings.color;
+      ctx.globalAlpha = fillAlpha * 0.6;
+      for (let x = -pad; x <= w + pad; x += s * 2) {
+        for (let y = -pad; y <= h + pad; y += s * 2) {
+          ctx.fillRect(x, y, s, s);
+        }
+      }
+      ctx.restore();
     }
-    for (let y = 0; y <= h; y += s) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
+    if (fillMode !== 'fill') {
+      ctx.beginPath();
+      for (let x = -pad; x <= w + pad; x += s) {
+        ctx.moveTo(x, -pad);
+        ctx.lineTo(x, h + pad);
+      }
+      for (let y = -pad; y <= h + pad; y += s) {
+        ctx.moveTo(-pad, y);
+        ctx.lineTo(w + pad, y);
+      }
+      ctx.stroke();
     }
   } else {
-    // Staggered Dashes
     const dashLen = s * 1.5;
-    for (let y = 0; y <= h; y += s) {
-      const xOffset = (Math.round(y / s) % 2) * (dashLen / 2);
-      for (let x = xOffset; x <= w; x += dashLen * 1.6) {
+    ctx.beginPath();
+    for (let y = -pad; y <= h + pad; y += s) {
+      const xOffset = (Math.abs(Math.round(y / s)) % 2) * (dashLen / 2);
+      for (let x = -pad + xOffset; x <= w + pad; x += dashLen * 1.6) {
         ctx.moveTo(x, y);
         ctx.lineTo(x + dashLen, y);
       }
     }
+    ctx.stroke();
   }
-  ctx.stroke();
 }
 
 /**
@@ -637,48 +663,82 @@ function drawSacredCircles(
   h: number,
   step: number,
   harmonics: number,
-  variant: number
+  variant: number,
+  settings: FilterSettings['patterns']
 ) {
   const r = Math.max(16, step * 0.9);
-  ctx.beginPath();
+  const pad = Math.max(100, Math.round(r * 2.5));
+  const fillMode = settings.fillMode || 'both';
+  const fillAlpha = (settings.opacity / 100) * ((settings.fillOpacity ?? 30) / 100);
 
   if (variant % 3 === 0) {
-    // Flower of Life overlapping circle matrix
+    // Flower of Life overlapping circle matrix across full canvas
     const rowDist = r * 0.866;
-    for (let y = -r; y <= h + r * 2; y += rowDist) {
+    for (let y = -pad; y <= h + pad; y += rowDist) {
       const rowIdx = Math.round(y / rowDist);
-      const xOffset = (rowIdx % 2) * (r / 2);
-      for (let x = -r + xOffset; x <= w + r * 2; x += r) {
-        ctx.moveTo(x + r, y);
+      const xOffset = (Math.abs(rowIdx) % 2) * (r / 2);
+      for (let x = -pad + xOffset; x <= w + pad; x += r) {
+        ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
+        if (fillMode === 'fill' || fillMode === 'both') {
+          ctx.save();
+          ctx.globalAlpha = fillAlpha;
+          ctx.fillStyle = settings.color;
+          ctx.fill();
+          ctx.restore();
+        }
+        if (fillMode !== 'fill') {
+          ctx.stroke();
+        }
       }
     }
   } else if (variant % 3 === 1) {
     // Japanese Seigaiha Scalloped Waves
     const waveR = r * 1.2;
     const rowH = waveR * 0.5;
-    for (let y = 0; y <= h + waveR; y += rowH) {
+    for (let y = -pad; y <= h + pad; y += rowH) {
       const rowIdx = Math.round(y / rowH);
-      const xOffset = (rowIdx % 2) * waveR;
-      for (let x = -waveR + xOffset; x <= w + waveR * 2; x += waveR * 2) {
-        for (let ring = 1; ring <= harmonics; ring++) {
+      const xOffset = (Math.abs(rowIdx) % 2) * waveR;
+      for (let x = -pad + xOffset; x <= w + pad; x += waveR * 2) {
+        for (let ring = harmonics; ring >= 1; ring--) {
           const curR = (waveR / harmonics) * ring;
-          ctx.moveTo(x + curR, y);
+          ctx.beginPath();
           ctx.arc(x, y, curR, Math.PI, Math.PI * 2);
+          if (fillMode === 'fill' || fillMode === 'both') {
+            ctx.save();
+            ctx.globalAlpha = fillAlpha * (ring / harmonics);
+            ctx.fillStyle = settings.color;
+            ctx.fill();
+            ctx.restore();
+          }
+          if (fillMode !== 'fill') {
+            ctx.stroke();
+          }
         }
       }
     }
   } else {
-    // Concentric Mandala Circles / Torus Rings
+    // Concentric Mandala Circles out past corners
     const cx = w / 2;
     const cy = h / 2;
-    const maxR = Math.hypot(w, h) / 2;
-    for (let cr = r; cr <= maxR; cr += r * 0.8) {
-      ctx.moveTo(cx + cr, cy);
+    const maxR = Math.hypot(w, h) * 0.75;
+    let ringIdx = 0;
+    for (let cr = maxR; cr >= r; cr -= r * 0.8) {
+      ringIdx++;
+      ctx.beginPath();
       ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+      if ((fillMode === 'fill' || fillMode === 'both') && ringIdx % 2 === 0) {
+        ctx.save();
+        ctx.globalAlpha = fillAlpha;
+        ctx.fillStyle = settings.color;
+        ctx.fill();
+        ctx.restore();
+      }
+      if (fillMode !== 'fill') {
+        ctx.stroke();
+      }
     }
   }
-  ctx.stroke();
 }
 
 /**
@@ -689,29 +749,39 @@ function drawCircuitTechGrid(
   w: number,
   h: number,
   step: number,
-  variant: number
+  variant: number,
+  settings: FilterSettings['patterns']
 ) {
   const s = Math.max(20, step);
-  ctx.beginPath();
+  const pad = Math.max(80, s * 2);
+  const fillMode = settings.fillMode || 'both';
+  const fillAlpha = (settings.opacity / 100) * ((settings.fillOpacity ?? 40) / 100);
 
-  for (let x = 0; x <= w; x += s) {
-    for (let y = 0; y <= h; y += s) {
-      const seed = (x * 73 + y * 97 + variant * 13) % 100;
+  ctx.beginPath();
+  for (let x = -pad; x <= w + pad; x += s) {
+    for (let y = -pad; y <= h + pad; y += s) {
+      const seed = Math.abs(Math.round(x * 73 + y * 97 + variant * 13)) % 100;
       if (seed < 50) {
-        // Orthogonal trace
         ctx.moveTo(x, y);
-        ctx.lineTo(x + s * 0.6, y);
-        ctx.lineTo(x + s * 0.6, y + s * 0.6);
-      } else if (seed < 80) {
-        // Diagonal trace
-        ctx.moveTo(x, y);
+        ctx.lineTo(x + s * 0.5, y);
         ctx.lineTo(x + s * 0.5, y + s * 0.5);
-        ctx.lineTo(x + s, y + s * 0.5);
+      } else if (seed < 80) {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + s, y + s);
+      } else {
+        ctx.moveTo(x + s * 0.5, y);
+        ctx.lineTo(x + s * 0.5, y + s);
       }
-      // Node pad
       if (seed % 7 === 0) {
-        ctx.moveTo(x + 2.5, y);
-        ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+        ctx.moveTo(x + 3, y);
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+      }
+      if ((fillMode === 'fill' || fillMode === 'both') && seed % 11 === 0) {
+        ctx.save();
+        ctx.fillStyle = settings.color;
+        ctx.globalAlpha = fillAlpha * 0.75;
+        ctx.fillRect(x + 2, y + 2, s * 0.45, s * 0.45);
+        ctx.restore();
       }
     }
   }
@@ -727,16 +797,18 @@ function drawWaveContours(
   h: number,
   step: number,
   harmonics: number,
-  variant: number
+  variant: number,
+  settings: FilterSettings['patterns']
 ) {
   const s = Math.max(14, step * 0.8);
+  const pad = Math.max(80, s * 3);
   const freq = 0.015 * (1 + (variant % 4) * 0.3);
   const amp = s * 0.7;
 
   ctx.beginPath();
-  for (let y = 0; y <= h; y += s) {
-    ctx.moveTo(0, y);
-    for (let x = 0; x <= w; x += 8) {
+  for (let y = -pad; y <= h + pad; y += s) {
+    ctx.moveTo(-pad, y);
+    for (let x = -pad; x <= w + pad; x += 8) {
       const yWave =
         y +
         Math.sin(x * freq + y * 0.02) * amp +
@@ -756,25 +828,32 @@ function drawHalftoneDots(
   h: number,
   step: number,
   variant: number,
-  ratio: number
+  ratio: number,
+  settings: FilterSettings['patterns']
 ) {
   const s = Math.max(12, step * 0.6);
+  const pad = Math.max(60, s * 2);
   const maxDotR = Math.max(1.2, s * ratio);
+  const fillMode = settings.fillMode || 'both';
 
-  for (let y = s / 2; y < h; y += s) {
+  ctx.fillStyle = settings.color;
+  for (let y = -pad; y <= h + pad; y += s) {
     const rowIdx = Math.round(y / s);
-    const xOffset = (variant % 2 === 1 ? (rowIdx % 2) * (s / 2) : 0);
+    const xOffset = (variant % 2 === 1 ? (Math.abs(rowIdx) % 2) * (s / 2) : 0);
 
-    for (let x = s / 2 + xOffset; x < w; x += s) {
+    for (let x = -pad + xOffset; x <= w + pad; x += s) {
       let r = maxDotR;
       if (variant % 3 === 0) {
-        // Gradient dot sizing by distance to center
         const dist = Math.hypot(x - w / 2, y - h / 2) / (w * 0.5);
         r = Math.max(0.8, maxDotR * Math.abs(Math.sin(dist * Math.PI)));
       }
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
+      if (fillMode === 'stroke') {
+        ctx.stroke();
+      } else {
+        ctx.fill();
+      }
     }
   }
 }
@@ -787,53 +866,89 @@ function drawWeaveAndTiles(
   w: number,
   h: number,
   step: number,
-  variant: number
+  variant: number,
+  settings: FilterSettings['patterns']
 ) {
   const s = Math.max(16, step * 0.8);
-  ctx.beginPath();
+  const pad = Math.max(80, s * 2);
+  const fillMode = settings.fillMode || 'both';
+  const fillAlpha = (settings.opacity / 100) * ((settings.fillOpacity ?? 40) / 100);
 
   if (variant % 3 === 0) {
     // Herringbone Weave
-    for (let y = -s; y <= h + s; y += s) {
-      for (let x = -s; x <= w + s; x += s * 2) {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + s, y + s * 0.6);
-        ctx.lineTo(x + s * 2, y);
+    for (let y = -pad; y <= h + pad; y += s) {
+      for (let x = -pad; x <= w + pad; x += s * 2) {
+        if (fillMode === 'fill' || fillMode === 'both') {
+          ctx.save();
+          ctx.fillStyle = settings.color;
+          ctx.globalAlpha = fillAlpha * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + s, y + s * 0.6);
+          ctx.lineTo(x + s * 2, y);
+          ctx.lineTo(x + s, y - s * 0.6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        if (fillMode !== 'fill') {
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + s, y + s * 0.6);
+          ctx.lineTo(x + s * 2, y);
+          ctx.stroke();
+        }
       }
     }
   } else if (variant % 3 === 1) {
     // Subway Brick Tile
     const brickH = s * 0.6;
-    for (let y = 0; y <= h; y += brickH) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
+    for (let y = -pad; y <= h + pad; y += brickH) {
       const rowIdx = Math.round(y / brickH);
-      const xOffset = (rowIdx % 2) * (s / 2);
-      for (let x = xOffset; x <= w; x += s) {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y + brickH);
+      const xOffset = (Math.abs(rowIdx) % 2) * (s / 2);
+      for (let x = -pad + xOffset; x <= w + pad; x += s) {
+        if (fillMode === 'fill' || fillMode === 'both') {
+          ctx.save();
+          ctx.fillStyle = settings.color;
+          ctx.globalAlpha = fillAlpha * (((Math.abs(x) + Math.abs(y)) % Math.round(s * 2) === 0) ? 0.6 : 0.25);
+          ctx.fillRect(x, y, s, brickH);
+          ctx.restore();
+        }
+        if (fillMode !== 'fill') {
+          ctx.strokeRect(x, y, s, brickH);
+        }
       }
     }
   } else {
     // Basketweave
-    for (let x = 0; x <= w; x += s) {
-      for (let y = 0; y <= h; y += s) {
-        const isHoriz = (Math.round(x / s) + Math.round(y / s)) % 2 === 0;
-        if (isHoriz) {
-          ctx.moveTo(x, y + s * 0.33);
-          ctx.lineTo(x + s, y + s * 0.33);
-          ctx.moveTo(x, y + s * 0.66);
-          ctx.lineTo(x + s, y + s * 0.66);
-        } else {
-          ctx.moveTo(x + s * 0.33, y);
-          ctx.lineTo(x + s * 0.33, y + s);
-          ctx.moveTo(x + s * 0.66, y);
-          ctx.lineTo(x + s * 0.66, y + s);
+    for (let x = -pad; x <= w + pad; x += s) {
+      for (let y = -pad; y <= h + pad; y += s) {
+        const isHoriz = (Math.abs(Math.round((x + pad) / s)) + Math.abs(Math.round((y + pad) / s))) % 2 === 0;
+        if (fillMode === 'fill' || fillMode === 'both') {
+          ctx.save();
+          ctx.fillStyle = settings.color;
+          ctx.globalAlpha = isHoriz ? fillAlpha * 0.7 : fillAlpha * 0.3;
+          ctx.fillRect(x, y, s, s);
+          ctx.restore();
+        }
+        if (fillMode !== 'fill') {
+          ctx.beginPath();
+          if (isHoriz) {
+            ctx.moveTo(x, y + s * 0.33);
+            ctx.lineTo(x + s, y + s * 0.33);
+            ctx.moveTo(x, y + s * 0.66);
+            ctx.lineTo(x + s, y + s * 0.66);
+          } else {
+            ctx.moveTo(x + s * 0.33, y);
+            ctx.lineTo(x + s * 0.33, y + s);
+            ctx.moveTo(x + s * 0.66, y);
+            ctx.lineTo(x + s * 0.66, y + s);
+          }
+          ctx.stroke();
         }
       }
     }
   }
-  ctx.stroke();
 }
 
 /**
@@ -845,15 +960,17 @@ function drawCelestialStars(
   h: number,
   step: number,
   harmonics: number,
-  variant: number
+  variant: number,
+  settings: FilterSettings['patterns']
 ) {
   const s = Math.max(28, step * 1.3);
-  ctx.beginPath();
+  const pad = Math.max(80, s * 2);
+  const fillMode = settings.fillMode || 'both';
 
-  for (let x = s / 2; x < w; x += s) {
-    for (let y = s / 2; y < h; y += s) {
+  ctx.beginPath();
+  for (let x = -pad; x <= w + pad; x += s) {
+    for (let y = -pad; y <= h + pad; y += s) {
       const starR = s * 0.35;
-      // 4-point or 8-point cross
       ctx.moveTo(x - starR, y);
       ctx.lineTo(x + starR, y);
       ctx.moveTo(x, y - starR);
@@ -865,6 +982,11 @@ function drawCelestialStars(
         ctx.lineTo(x + diagR, y + diagR);
         ctx.moveTo(x - diagR, y + diagR);
         ctx.lineTo(x + diagR, y - diagR);
+      }
+
+      if (fillMode === 'fill' || fillMode === 'both') {
+        ctx.moveTo(x + 2, y);
+        ctx.arc(x, y, 2.5, 0, Math.PI * 2);
       }
     }
   }
@@ -880,34 +1002,47 @@ function drawOpticalIllusions(
   h: number,
   step: number,
   harmonics: number,
-  variant: number
+  variant: number,
+  settings: FilterSettings['patterns']
 ) {
   const s = Math.max(16, step);
-  ctx.beginPath();
-
   const cx = w / 2;
   const cy = h / 2;
-  const maxR = Math.hypot(w, h) / 1.8;
+  const maxR = Math.hypot(w, h) * 0.75;
+  const fillMode = settings.fillMode || 'both';
+  const fillAlpha = (settings.opacity / 100) * ((settings.fillOpacity ?? 35) / 100);
 
   if (variant % 2 === 0) {
-    // Op-art concentric diamonds
-    for (let r = 8; r <= maxR; r += s * 0.6) {
+    let bandIdx = 0;
+    for (let r = maxR; r >= 8; r -= s * 0.6) {
+      bandIdx++;
+      ctx.beginPath();
       ctx.moveTo(cx, cy - r);
       ctx.lineTo(cx + r, cy);
       ctx.lineTo(cx, cy + r);
       ctx.lineTo(cx - r, cy);
       ctx.closePath();
+      if ((fillMode === 'fill' || fillMode === 'both') && bandIdx % 2 === 0) {
+        ctx.save();
+        ctx.globalAlpha = fillAlpha;
+        ctx.fillStyle = settings.color;
+        ctx.fill();
+        ctx.restore();
+      }
+      if (fillMode !== 'fill') {
+        ctx.stroke();
+      }
     }
   } else {
-    // Radiating starburst spokes
     const spokes = 36;
+    ctx.beginPath();
     for (let i = 0; i < spokes; i++) {
       const a = (Math.PI * 2 * i) / spokes;
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + Math.cos(a) * maxR, cy + Math.sin(a) * maxR);
     }
+    ctx.stroke();
   }
-  ctx.stroke();
 }
 
 /**
@@ -918,22 +1053,34 @@ function drawOrganicCellular(
   w: number,
   h: number,
   step: number,
-  variant: number
+  variant: number,
+  settings: FilterSettings['patterns']
 ) {
   const s = Math.max(22, step * 1.1);
-  ctx.beginPath();
+  const pad = Math.max(80, s * 2);
+  const fillMode = settings.fillMode || 'both';
+  const fillAlpha = (settings.opacity / 100) * ((settings.fillOpacity ?? 40) / 100);
 
-  for (let x = 0; x <= w + s; x += s) {
-    for (let y = 0; y <= h + s; y += s) {
+  for (let x = -pad; x <= w + pad; x += s) {
+    for (let y = -pad; y <= h + pad; y += s) {
       const jx = x + Math.sin(y * 0.05 + variant) * (s * 0.25);
       const jy = y + Math.cos(x * 0.05 + variant) * (s * 0.25);
       const cr = s * 0.45;
 
-      ctx.moveTo(jx + cr, jy);
+      ctx.beginPath();
       ctx.arc(jx, jy, cr, 0, Math.PI * 2);
+      if (fillMode === 'fill' || fillMode === 'both') {
+        ctx.save();
+        ctx.globalAlpha = fillAlpha;
+        ctx.fillStyle = settings.color;
+        ctx.fill();
+        ctx.restore();
+      }
+      if (fillMode !== 'fill') {
+        ctx.stroke();
+      }
     }
   }
-  ctx.stroke();
 }
 
 /**
@@ -945,19 +1092,19 @@ function drawFractalBranches(
   h: number,
   step: number,
   harmonics: number,
-  variant: number
+  variant: number,
+  settings: FilterSettings['patterns']
 ) {
   const s = Math.max(24, step * 1.2);
-  ctx.beginPath();
+  const pad = Math.max(80, s * 2);
 
-  for (let x = s; x < w; x += s * 1.8) {
-    for (let y = s; y < h; y += s * 1.8) {
+  ctx.beginPath();
+  for (let x = -pad; x <= w + pad; x += s * 1.6) {
+    for (let y = -pad; y <= h + pad; y += s * 1.6) {
       const len = s * 0.6;
       ctx.moveTo(x, y);
       ctx.lineTo(x, y - len);
-      // Left branch
       ctx.lineTo(x - len * 0.5, y - len * 1.4);
-      // Right branch
       ctx.moveTo(x, y - len);
       ctx.lineTo(x + len * 0.5, y - len * 1.4);
     }
@@ -966,24 +1113,45 @@ function drawFractalBranches(
 }
 
 /**
- * Fallback Cartesian Grid
+ * Fallback Cartesian Grid with Full Bleed & Solid Fill Options
  */
 function drawBasicGrid(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   w: number,
   h: number,
-  step: number
+  step: number,
+  settings: FilterSettings['patterns']
 ) {
-  ctx.beginPath();
-  for (let x = 0; x <= w; x += step) {
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
+  const pad = Math.max(80, step * 2);
+  const fillMode = settings.fillMode || 'both';
+  const fillAlpha = (settings.opacity / 100) * ((settings.fillOpacity ?? 35) / 100);
+
+  if (fillMode === 'fill' || fillMode === 'both') {
+    ctx.save();
+    ctx.fillStyle = settings.color;
+    ctx.globalAlpha = fillAlpha;
+    for (let x = -pad; x <= w + pad; x += step) {
+      for (let y = -pad; y <= h + pad; y += step) {
+        if ((Math.abs(Math.round((x + pad) / step)) + Math.abs(Math.round((y + pad) / step))) % 2 === 0) {
+          ctx.fillRect(x, y, step, step);
+        }
+      }
+    }
+    ctx.restore();
   }
-  for (let y = 0; y <= h; y += step) {
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
+
+  if (fillMode !== 'fill') {
+    ctx.beginPath();
+    for (let x = -pad; x <= w + pad; x += step) {
+      ctx.moveTo(x, -pad);
+      ctx.lineTo(x, h + pad);
+    }
+    for (let y = -pad; y <= h + pad; y += step) {
+      ctx.moveTo(-pad, y);
+      ctx.lineTo(w + pad, y);
+    }
+    ctx.stroke();
   }
-  ctx.stroke();
 }
 
 /**
@@ -1003,24 +1171,28 @@ export function renderPatternThumbnail(
 
   ctx.clearRect(0, 0, w, h);
 
-  // Background
-  ctx.fillStyle = '#0e121b';
+  // Dark preview background
+  ctx.fillStyle = '#0a0d14';
   ctx.fillRect(0, 0, w, h);
 
-  // Mock settings for thumbnail preview
   const mockSettings: FilterSettings['patterns'] = {
     enabled: true,
     type: patternItem.id,
-    scale: is3D ? 30 : 35,
-    opacity: 90,
+    scale: 45,
+    opacity: 100,
     color: tintColor,
-    blendMode: 'screen',
+    backgroundColor: 'transparent',
+    strokeWidth: 1.2,
+    rotation: 0,
     is3D: is3D || patternItem.category === '3d',
-    depth3D: 18,
-    pitch3D: 28,
-    yaw3D: 12,
+    depth3D: 10,
+    pitch3D: 25,
+    yaw3D: 0,
     shading3D: 'extrude',
-    lightAngle3D: 135,
+    fillMode: 'both',
+    fillOpacity: 40,
+    fullFill: true,
+    blendMode: 'screen',
   };
 
   renderProceduralPattern(ctx, w, h, mockSettings, patternItem);

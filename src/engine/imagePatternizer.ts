@@ -107,18 +107,9 @@ export function applyFullImagePatternize(
     ? settings.backgroundColor
     : '#080a10';
 
-  // 2. Clear canvas and fill with backdrop tone
+  // 2. Clear canvas and draw source photograph with full clarity so the image is 100% full-fill
   ctx.save();
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(0, 0, w, h);
-
-  // Optional: subtle original photo underlay if fidelity is high
-  if (fidelity > 0.1) {
-    ctx.save();
-    ctx.globalAlpha = fidelity * 0.28;
-    ctx.drawImage(sourceImage, 0, 0, w, h);
-    ctx.restore();
-  }
+  ctx.drawImage(sourceImage, 0, 0, w, h);
 
   // 3. Dispatch to patternize mode
   switch (mode) {
@@ -344,30 +335,12 @@ function renderColorMosaicMode(
     // Isometric 3D Voxel Mosaic
     render3DPhotoVoxelMode(ctx, w, h, settings, sampler);
   } else {
-    // Universal Vector Color Mapping for ANY of the 500 patterns!
-    // Step 1: Render vector pattern geometry on mask buffer
-    const pBuf = typeof OffscreenCanvas !== 'undefined'
-      ? new OffscreenCanvas(w, h)
-      : document.createElement('canvas');
-    pBuf.width = w;
-    pBuf.height = h;
-    const pCtx = pBuf.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-
-    renderProceduralPattern(pCtx, w, h, {
+    // Universal Vector Color Mapping for ANY of the 500 patterns with Full-Bleed Fill
+    renderProceduralPattern(ctx, w, h, {
       ...settings,
-      color: '#ffffff',
-      backgroundColor: 'transparent',
-      opacity: 100,
-      glow: 0,
-      blendMode: 'normal',
+      opacity: settings.opacity,
+      fullFill: true,
     });
-
-    // Step 2: Composite the photograph through the vector pattern lines
-    pCtx.globalCompositeOperation = 'source-in';
-    pCtx.drawImage(sourceImage, 0, 0, w, h);
-
-    // Step 3: Draw back to main canvas
-    ctx.drawImage(pBuf, 0, 0, w, h);
   }
 
   ctx.restore();

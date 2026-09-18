@@ -7,12 +7,15 @@ import { BatchQueue } from './components/viewport/BatchQueue';
 import { CodeExportModal } from './components/common/CodeExportModal';
 import { PatternLibraryModal } from './components/common/PatternLibraryModal';
 import { ThreeDStudioModal } from './components/studio/ThreeDStudioModal';
+import { VectorStudioView } from './components/studio/VectorStudioView';
 import { generateSampleImages } from './engine/sampleGenerator';
 import { extractPaletteFromImage } from './engine/colorExtractor';
 import { Check, Zap, Sparkles, Shield, User, Key, HardDrive, Eye, Sliders } from 'lucide-react';
 import { ImageItem } from './types/studio';
+import { useThemeAndLanguage } from './context/ThemeLanguageContext';
 
 export function App() {
+  const { t } = useThemeAndLanguage();
   const {
     images,
     selectedImage,
@@ -24,6 +27,7 @@ export function App() {
     isExportingZip,
     zipProgress,
     setSelectedImageId,
+    setImages,
     addImages,
     removeImage,
     clearImages,
@@ -82,6 +86,20 @@ export function App() {
       if (colors.length >= 4) {
         updateSettings('gradient', {
           meshColors: [colors[0], colors[1], colors[2], colors[3]],
+          stops: [
+            { id: '1', color: colors[0], position: 0 },
+            { id: '2', color: colors[1], position: 35 },
+            { id: '3', color: colors[2], position: 70 },
+            { id: '4', color: colors[3], position: 100 },
+          ],
+        });
+        updateSettings('gradientMaker', {
+          meshColors: [colors[0], colors[1], colors[2], colors[3]],
+          stops: [
+            { id: '1', color: colors[0], position: 0 },
+            { id: '2', color: colors[1], position: 50 },
+            { id: '3', color: colors[2], position: 100 },
+          ],
         });
       }
     } catch (e) {
@@ -153,7 +171,7 @@ export function App() {
                   }`}
                 >
                   <Eye className="w-3.5 h-3.5" />
-                  <span>Canvas Studio</span>
+                  <span>{t('nav_image_studio', 'Canvas Studio')}</span>
                 </button>
                 <button
                   onClick={() => setMobileStudioTab('tools')}
@@ -164,7 +182,7 @@ export function App() {
                   }`}
                 >
                   <Sliders className="w-3.5 h-3.5" />
-                  <span>Tool Panels</span>
+                  <span>{t('tools_header', 'Tool Panels')}</span>
                 </button>
               </div>
             </div>
@@ -194,6 +212,7 @@ export function App() {
                   onViewBatchQueue={() => setActiveNavTab('batch')}
                   onOpenPatternModal={() => setIsPatternModalOpen(true)}
                   onOpen3DStudio={() => setIs3DModalOpen(true)}
+                  onOpenVictorStudio={() => setActiveNavTab('vector')}
                   onSelectPreset={applyPreset}
                   onRandomize={randomizeSettings}
                   onReset={resetSettings}
@@ -232,6 +251,17 @@ export function App() {
               </div>
             </div>
           </>
+        )}
+
+        {activeNavTab === 'vector' && (
+          <VectorStudioView
+            images={images}
+            selectedImage={selectedImage}
+            onSelectImage={setSelectedImageId}
+            onUploadImages={handleUploadImages}
+            onUpdateImages={setImages}
+            onLoadSampleImage={handleLoadSamplePhoto}
+          />
         )}
 
         {activeNavTab === 'batch' && (
@@ -374,6 +404,9 @@ export function App() {
           updateSettings('patterns', {
             type: patId,
             enabled: patId !== 'none',
+            fullFill: true,
+            fillMode: settings.patterns.fillMode || 'both',
+            fillOpacity: settings.patterns.fillOpacity ?? 45,
             ...(enable3D !== undefined ? { is3D: enable3D } : {}),
           });
         }}

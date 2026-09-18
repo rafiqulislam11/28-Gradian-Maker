@@ -444,6 +444,80 @@ export const CanvasStudio: React.FC<CanvasStudioProps> = ({
               </div>
             </div>
           )}
+
+          {/* Quick Studio Effect Chips for direct testing on the active image */}
+          <div className="hidden xl:flex items-center bg-[#121620] p-1 rounded-xl border border-white/10 gap-1 text-[11px] shadow-sm">
+            <button
+              onClick={() => {
+                onUpdateSettings('fractalGlass', { enabled: false });
+                onUpdateSettings('gradientMaker', { enabled: false });
+                onUpdateSettings('gradient', { enabled: true });
+              }}
+              className={`px-2 py-1 rounded-lg font-medium transition flex items-center gap-1 ${
+                !settings.fractalGlass?.enabled && !settings.gradientMaker?.enabled
+                  ? 'bg-cyan-400 text-dark-950 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+              title="Image to Gradient: Standard / Auto Palette mode"
+            >
+              <span>🌈</span>
+              <span>Image to Grad</span>
+            </button>
+
+            <button
+              onClick={() => {
+                const curMode = settings.fractalGlass?.mode || '1';
+                const nextModes: Record<string, string> = {
+                  '1': '2',
+                  '2': '3',
+                  '3': '3.1',
+                  '3.1': '3.2',
+                  '3.2': '3.3',
+                  '3.3': '1',
+                };
+                const newMode = settings.fractalGlass?.enabled ? (nextModes[curMode] as any) : '1';
+                onUpdateSettings('fractalGlass', { enabled: true, mode: newMode });
+                onUpdateSettings('gradientMaker', { enabled: false });
+              }}
+              className={`px-2 py-1 rounded-lg font-medium transition flex items-center gap-1 ${
+                settings.fractalGlass?.enabled
+                  ? 'bg-cyan-400 text-dark-950 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+              title="Click to cycle Fractal Glass modes (1, 2, 3, 3.1, 3.2, 3.3)"
+            >
+              <span>🧊</span>
+              <span>
+                Fractal Glass {settings.fractalGlass?.enabled ? `(${settings.fractalGlass.mode})` : ''}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                const curMode = settings.gradientMaker?.mode || '1';
+                const nextModes: Record<string, string> = {
+                  '1': '2',
+                  '2': '3',
+                  '3': '4',
+                  '4': '1',
+                };
+                const newMode = settings.gradientMaker?.enabled ? (nextModes[curMode] as any) : '1';
+                onUpdateSettings('gradientMaker', { enabled: true, mode: newMode });
+                onUpdateSettings('fractalGlass', { enabled: false });
+              }}
+              className={`px-2 py-1 rounded-lg font-medium transition flex items-center gap-1 ${
+                settings.gradientMaker?.enabled
+                  ? 'bg-cyan-400 text-dark-950 font-bold shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+              title="Click to cycle Gradient Maker modes (1, 2, 3, 4)"
+            >
+              <span>🎨</span>
+              <span>
+                Grad Maker {settings.gradientMaker?.enabled ? `(#${settings.gradientMaker.mode})` : ''}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Right: Zoom Controls, Fullscreen, Code & Export */}

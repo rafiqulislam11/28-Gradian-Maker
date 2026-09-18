@@ -421,6 +421,7 @@ export function useStudio() {
     setSelectedImageId,
     setActiveTab,
     setViewMode,
+    setImages,
     addImages,
     removeImage,
     clearImages,

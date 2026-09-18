@@ -369,6 +369,9 @@ export const PatternStudioPanel: React.FC<PatternStudioPanelProps> = ({
       yaw3D: pAny.yaw3D ?? 0,
       lightAngle3D: pAny.lightAngle3D ?? 135,
       shading3D: pAny.shading3D ?? 'extrude',
+      fullFill: true,
+      fillMode: pAny.fillMode ?? 'both',
+      fillOpacity: pAny.fillOpacity ?? 45,
       patternize: isPresetPatternize,
       patternizeMode: pAny.patternizeMode ?? 'mosaic',
       patternizeFidelity: pAny.patternizeFidelity ?? 75,
@@ -478,6 +481,72 @@ export const PatternStudioPanel: React.FC<PatternStudioPanelProps> = ({
           )}
         </select>
         <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+      </div>
+
+      {/* FULL FILL & COVERAGE CARD (সম্পূর্ণ ইমেজ ফিল কন্ট্রোল) */}
+      <div className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-950/40 via-purple-950/30 to-dark-900 border border-cyan-500/30 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs">🔲</span>
+            <span className="text-xs font-bold text-white">Full Fill (সম্পূর্ণ ইমেজ ফিল)</span>
+          </div>
+          <button
+            onClick={() => {
+              const nextFullFill = settings.fullFill === false ? true : false;
+              onUpdateSettings({
+                fullFill: nextFullFill,
+                fillMode: nextFullFill ? (settings.fillMode === 'stroke' ? 'both' : (settings.fillMode || 'both')) : 'stroke',
+              });
+            }}
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono transition border ${
+              settings.fullFill !== false
+                ? 'bg-cyan-400 text-dark-950 border-cyan-300 shadow-md shadow-cyan-500/20'
+                : 'bg-dark-800 text-slate-400 border-white/10 hover:text-white'
+            }`}
+          >
+            {settings.fullFill !== false ? 'FULL FILL: ON' : 'OFF'}
+          </button>
+        </div>
+
+        {/* Fill Mode Segment: Solid Fill vs Fill + Line vs Wireframe Line */}
+        <div className="grid grid-cols-3 gap-1 text-[10px]">
+          {[
+            { id: 'fill', label: 'Solid Fill', icon: '🎨' },
+            { id: 'both', label: 'Fill + Line', icon: '🔲' },
+            { id: 'stroke', label: 'Outline', icon: '✏️' },
+          ].map(m => (
+            <button
+              key={m.id}
+              onClick={() => onUpdateSettings({ fillMode: m.id as any, fullFill: m.id !== 'stroke' ? true : settings.fullFill })}
+              className={`py-1.5 px-1 rounded-lg transition font-bold text-center truncate flex items-center justify-center gap-1 ${
+                (settings.fillMode || 'both') === m.id
+                  ? 'bg-cyan-400 text-dark-950 shadow-sm'
+                  : 'bg-dark-950 hover:bg-dark-800 text-slate-400 border border-white/5'
+              }`}
+            >
+              <span>{m.icon}</span>
+              <span>{m.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Fill Opacity Slider when Fill is active */}
+        {(settings.fillMode || 'both') !== 'stroke' && (
+          <div className="space-y-1 pt-1 border-t border-white/5">
+            <div className="flex justify-between text-[10px] text-slate-400">
+              <span>Fill Density / Opacity</span>
+              <span className="font-mono text-cyan-400 font-bold">{settings.fillOpacity ?? 45}%</span>
+            </div>
+            <input
+              type="range"
+              min="5"
+              max="100"
+              value={settings.fillOpacity ?? 45}
+              onChange={e => onUpdateSettings({ fillOpacity: Number(e.target.value) })}
+              className="w-full accent-cyan-400 cursor-pointer h-1.5 bg-dark-950 rounded-lg"
+            />
+          </div>
+        )}
       </div>
 
       {/* 3. Comprehensive Customization Controls when Enabled */}

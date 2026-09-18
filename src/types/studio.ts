@@ -11,6 +11,36 @@ export type PatternType = string;
 export type ExportFormat = 'image/png' | 'image/jpeg' | 'image/webp';
 export type ItemStatus = 'idle' | 'queued' | 'processing' | 'completed' | 'failed';
 
+export type FractalGlassMode = '1' | '2' | '3' | '3.1' | '3.2' | '3.3';
+export type GradientMakerMode = '1' | '2' | '3' | '4';
+export type GradientMapPreset = 'cyberpunk' | 'sunset' | 'hologram' | 'infrared' | 'emerald' | 'obsidian';
+
+export interface FractalGlassSettings {
+  enabled: boolean;
+  mode: FractalGlassMode;
+  distortion: number; // 0 - 100
+  dispersion: number; // 0 - 100 (chromatic RGB split)
+  scale: number; // 5 - 100
+  frost: number; // 0 - 100
+  specular: number; // 0 - 100
+  angle: number; // 0 - 360
+  blendMode: 'normal' | 'overlay' | 'screen' | 'soft-light';
+  opacity: number; // 0 - 100
+}
+
+export interface GradientMakerSettings {
+  enabled: boolean;
+  mode: GradientMakerMode;
+  mapPalettePreset: GradientMapPreset;
+  customMapColors?: string[];
+  stops: ColorStop[];
+  angle: number; // 0 - 360
+  meshColors: [string, string, string, string];
+  blendMode: 'normal' | 'overlay' | 'screen' | 'soft-light' | 'multiply' | 'color-dodge' | 'luminosity';
+  opacity: number; // 0 - 100
+  position?: 'overlay' | 'background' | 'map';
+}
+
 export interface FilterSettings {
   image: {
     opacity: number; // 0 - 100
@@ -65,6 +95,10 @@ export interface FilterSettings {
     yaw3D?: number; // -60 to 60 deg (tilt Y)
     lightAngle3D?: number; // 0 - 360 deg
     shading3D?: 'extrude' | 'isometric' | 'perspective' | 'emboss' | 'wireframe';
+    // Full Fill & Coverage Controls (সম্পূর্ণ ইমেজ ফিল)
+    fullFill?: boolean; // When true, ensures 100% edge-to-edge full canvas coverage without empty margins
+    fillMode?: 'stroke' | 'fill' | 'both'; // 'stroke' = wireframe outline, 'fill' = full solid/semi-solid fill, 'both' = fill + stroke outline
+    fillOpacity?: number; // 0 - 100: opacity of the shape fill
     // Full Image Pattern Transformation Engine
     patternize?: boolean; // When true, converts the full image into the pattern
     patternizeMode?: 'mosaic' | 'halftone' | '3d-voxel' | 'stencil' | 'duotone';
@@ -72,6 +106,8 @@ export interface FilterSettings {
     patternizeContrast?: number; // 0 - 100: contrast/luminance sensitivity
     patternizeInvert?: boolean; // Invert luminance modulation
   };
+  fractalGlass: FractalGlassSettings;
+  gradientMaker: GradientMakerSettings;
   upscale: {
     factor: 1 | 2 | 4 | 8;
     sharpen: number; // 0 - 100
