@@ -413,7 +413,7 @@ export const CanvasStudio: React.FC<CanvasStudioProps> = ({
           {images.length > 0 && (
             <div className="hidden sm:flex items-center bg-[#121620] px-2.5 py-1 rounded-xl border border-white/10 gap-2 text-xs text-slate-300 shadow-sm">
               <Eye className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-[11px] text-slate-400">Opacity:</span>
+              <span className="text-[11px] text-slate-400">Photo:</span>
               <span className="font-mono text-cyan-400 font-bold text-xs">
                 {settings.image?.opacity ?? 100}%
               </span>
@@ -423,9 +423,25 @@ export const CanvasStudio: React.FC<CanvasStudioProps> = ({
                 max="100"
                 value={settings.image?.opacity ?? 100}
                 onChange={e => onUpdateSettings('image', { opacity: Number(e.target.value) })}
-                className="w-16 accent-cyan-400 cursor-pointer h-1"
-                title="Adjust uploaded image opacity"
+                className="w-16 accent-cyan-400 cursor-pointer h-1.5"
+                title="Adjust photo opacity (0% = Pure Gradient, 100% = Full Photo)"
               />
+              <div className="flex items-center gap-0.5 border-l border-white/10 pl-1">
+                {[0, 50, 100].map(val => (
+                  <button
+                    key={val}
+                    onClick={() => onUpdateSettings('image', { opacity: val })}
+                    className={`px-1 py-0.2 rounded text-[9px] font-mono transition ${
+                      (settings.image?.opacity ?? 100) === val
+                        ? 'bg-cyan-400 text-dark-950 font-bold'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                    title={val === 0 ? 'Pure Gradient (ছবি বন্ধ)' : val === 50 ? '50% Blend (হাইব্রিড)' : '100% Photo (সম্পূর্ণ ছবি)'}
+                  >
+                    {val}%
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

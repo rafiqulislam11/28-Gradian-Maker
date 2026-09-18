@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { FilterSettings, ImageItem, Preset } from '../../types/studio';
 import { PATTERN_MAP } from '../../engine/patternLibrary';
+import { AutoImageToGradient } from './AutoImageToGradient';
 
 interface EasyStudioPanelProps {
   settings: FilterSettings;
@@ -32,6 +33,8 @@ interface EasyStudioPanelProps {
   selectedImage: ImageItem | null;
   onRandomize?: () => void;
   onReset?: () => void;
+  onUploadImages?: (files: File[]) => void;
+  onLoadSampleImage?: () => void;
 }
 
 // 8 Curated Easy 1-Click Styles (সহজ ১-ক্লিক স্টাইল)
@@ -300,6 +303,8 @@ export const EasyStudioPanel: React.FC<EasyStudioPanelProps> = ({
   selectedImage,
   onRandomize,
   onReset,
+  onUploadImages,
+  onLoadSampleImage,
 }) => {
   const [selectedStyleId, setSelectedStyleId] = useState<string>('cyber_neon');
   const [patternTab, setPatternTab] = useState<'transform' | 'colors' | 'stroke' | '3d'>('transform');
@@ -435,6 +440,15 @@ export const EasyStudioPanel: React.FC<EasyStudioPanelProps> = ({
         </div>
       </div>
 
+      {/* 2.5 Auto Image to Gradient Full System */}
+      <AutoImageToGradient
+        settings={settings}
+        onUpdateSettings={onUpdateSettings}
+        selectedImage={selectedImage}
+        onUploadImages={onUploadImages}
+        onLoadSampleImage={onLoadSampleImage}
+      />
+
       {/* 3. Quick Color Moods (কালার থিম) */}
       <div className="space-y-2 p-3 rounded-2xl bg-dark-900/90 border border-white/10 shadow-md">
         <div className="flex items-center justify-between text-xs">
@@ -472,15 +486,56 @@ export const EasyStudioPanel: React.FC<EasyStudioPanelProps> = ({
         </div>
       </div>
 
-      {/* 4. Easy 5 Master Sliders (সহজ ৫টি কন্ট্রোলস) */}
+      {/* 4. Easy Master Sliders (সহজ কন্ট্রোলস) */}
       <div className="space-y-3 p-3.5 rounded-2xl bg-dark-900/90 border border-white/10 shadow-md">
         <div className="flex items-center justify-between text-xs border-b border-white/5 pb-2">
           <span className="font-bold text-white flex items-center gap-1.5">
             <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Simple Sliders (সহজ ৫টি কন্ট্রোল)</span>
+            <span>Simple Sliders (সহজ কন্ট্রোল)</span>
           </span>
           <span className="text-[10px] font-mono text-cyan-400">Live Preview</span>
         </div>
+
+        {/* 0. Image Opacity Slider (when image is present) */}
+        {selectedImage && (
+          <div className="space-y-1 pb-2 border-b border-white/5">
+            <div className="flex justify-between text-[11px] text-slate-300">
+              <span className="font-medium flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Image Opacity (ইমেজ অপাসিটি)</span>
+              </span>
+              <span className="font-mono text-cyan-400 font-bold">{settings.image?.opacity ?? 100}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={settings.image?.opacity ?? 100}
+              onChange={e => onUpdateSettings('image', { opacity: Number(e.target.value) })}
+              className="w-full accent-cyan-400 cursor-pointer h-1.5"
+            />
+            <div className="grid grid-cols-4 gap-1 pt-0.5">
+              {[
+                { label: '0% Pure', val: 0 },
+                { label: '50% Blend', val: 50 },
+                { label: '80% Rich', val: 80 },
+                { label: '100% Full', val: 100 },
+              ].map(item => (
+                <button
+                  key={item.val}
+                  onClick={() => onUpdateSettings('image', { opacity: item.val })}
+                  className={`py-0.5 rounded text-[9.5px] font-mono transition ${
+                    (settings.image?.opacity ?? 100) === item.val
+                      ? 'bg-cyan-400 text-dark-950 font-bold'
+                      : 'bg-dark-950 hover:bg-dark-800 text-slate-400 border border-white/5'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 1. Color Intensity / Opacity */}
         <div className="space-y-1">

@@ -14,7 +14,7 @@ export type ItemStatus = 'idle' | 'queued' | 'processing' | 'completed' | 'faile
 export interface FilterSettings {
   image: {
     opacity: number; // 0 - 100
-    blendMode: 'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light';
+    blendMode: 'normal' | 'multiply' | 'screen' | 'overlay' | 'soft-light' | 'color-dodge' | 'luminosity';
   };
   gradient: {
     enabled: boolean;

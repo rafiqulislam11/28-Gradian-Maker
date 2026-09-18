@@ -18,10 +18,10 @@ export const DEFAULT_FILTER_SETTINGS: FilterSettings = {
       { id: '4', color: '#ff7a00', position: 100 },
     ],
     meshColors: ['#00d2ff', '#9d00ff', '#ff007f', '#ff7a00'],
-    position: 'overlay',
+    position: 'background',
   },
   blur: {
-    enabled: true,
+    enabled: false,
     category: 'mesh',
     radius: 45, // 75%
     angle: 45,

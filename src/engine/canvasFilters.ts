@@ -102,27 +102,40 @@ export function applyAllFiltersToCanvas(
   const imgBlend: GlobalCompositeOperation = rawBlend === 'normal' ? 'source-over' : (rawBlend as GlobalCompositeOperation);
 
   if (imgOpacity > 0) {
-    if (imgOpacity === 1 && rawBlend === 'normal') {
-      ctx.drawImage(originalImage, 0, 0, w, h);
-      if (settings.blur.enabled && settings.blur.radius > 0) {
-        applyBlurPipeline(ctx, w, h, settings.blur, originalImage);
-      }
+    const isFocalBlur =
+      settings.blur.enabled &&
+      settings.blur.radius > 0 &&
+      (settings.blur.category === 'radial' || settings.blur.category === 'tiltshift' || settings.blur.category === 'linear');
+    const isFullBlur = settings.blur.enabled && settings.blur.radius > 0 && !isFocalBlur;
+
+    const needBuffer = imgOpacity < 1 || rawBlend !== 'normal';
+    const targetCtx = needBuffer
+      ? (getPooledBuffer(w, h).getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D)
+      : ctx;
+    const imgBuf = needBuffer ? (targetCtx.canvas as HTMLCanvasElement | OffscreenCanvas) : null;
+
+    if (needBuffer && targetCtx) {
+      targetCtx.clearRect(0, 0, w, h);
+    }
+
+    if (isFocalBlur) {
+      // Draw sharp base first for focal zone, then composite masked blur on top
+      targetCtx.drawImage(originalImage, 0, 0, w, h);
+      applyBlurPipeline(targetCtx, w, h, settings.blur, originalImage);
+    } else if (isFullBlur) {
+      // Direct whole-image blur without sharp ghosting underneath
+      applyBlurPipeline(targetCtx, w, h, settings.blur, originalImage);
     } else {
-      const imgBuf = getPooledBuffer(w, h);
-      const iCtx = imgBuf.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-      iCtx.clearRect(0, 0, w, h);
-      iCtx.drawImage(originalImage, 0, 0, w, h);
+      // Clean, unblurred original image
+      targetCtx.drawImage(originalImage, 0, 0, w, h);
+    }
 
-      if (settings.blur.enabled && settings.blur.radius > 0) {
-        applyBlurPipeline(iCtx, w, h, settings.blur, originalImage);
-      }
-
+    if (needBuffer && imgBuf) {
       ctx.save();
       ctx.globalAlpha = imgOpacity;
       ctx.globalCompositeOperation = imgBlend;
       ctx.drawImage(imgBuf, 0, 0, w, h);
       ctx.restore();
-
       releasePooledBuffer(imgBuf);
     }
   }

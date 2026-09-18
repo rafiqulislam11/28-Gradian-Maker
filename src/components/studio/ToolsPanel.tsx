@@ -30,6 +30,7 @@ import { CREATIVE_PRESETS } from '../../engine/presets';
 import { GradientStudioPanel } from './GradientStudioPanel';
 import { PatternStudioPanel } from './PatternStudioPanel';
 import { EasyStudioPanel } from './EasyStudioPanel';
+import { AutoImageToGradient } from './AutoImageToGradient';
 
 export type ToolFilterTab = 'gradient' | 'blur' | 'noise' | 'patterns' | 'upscale' | 'presets' | 'all';
 
@@ -53,6 +54,7 @@ interface ToolsPanelProps {
   onSelectPreset?: (preset: Preset) => void;
   onRandomize?: () => void;
   onReset?: () => void;
+  onLoadSampleImage?: () => void;
 }
 
 export const ToolsPanel: React.FC<ToolsPanelProps> = ({
@@ -75,6 +77,7 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
   onSelectPreset,
   onRandomize,
   onReset,
+  onLoadSampleImage,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -348,51 +351,56 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
             </div>
 
             {images.length === 0 ? (
-              <div
-                onDragOver={e => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={e => {
-                  e.preventDefault();
-                  setIsDragging(false);
-                  handleFileChange(e.dataTransfer.files);
-                }}
-                onClick={() => fileInputRef.current?.click()}
-                className={`rounded-xl border-2 border-dashed p-3 text-center cursor-pointer transition-all flex items-center gap-3 ${
-                  isDragging
-                    ? 'border-cyan-400 bg-cyan-400/10 ring-2 ring-cyan-400/20'
-                    : 'border-white/10 hover:border-cyan-400/50 bg-dark-950/60 hover:bg-dark-950'
-                }`}
-              >
-                <div className="w-8 h-8 rounded-lg bg-cyan-400/15 border border-cyan-400/30 flex items-center justify-center text-cyan-400 shrink-0">
-                  <Upload className="w-4 h-4" />
-                </div>
-                <div className="text-left">
-                  <span className="text-xs font-semibold text-white block">Upload Images</span>
-                  <span className="text-[10px] text-cyan-400 block font-medium">Select up to 30+ files at once</span>
-                </div>
-              </div>
+              <AutoImageToGradient
+                settings={settings}
+                onUpdateSettings={onUpdateSettings}
+                selectedImage={null}
+                onUploadImages={onUploadImages}
+                onLoadSampleImage={onLoadSampleImage}
+              />
             ) : (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col gap-2.5">
+                {/* Multi-image Stepper & Add Button */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-dark-900/90 border border-white/10">
                   <div className="flex items-center gap-2 overflow-hidden">
                     <img
                       src={selectedImage?.processedUrl || selectedImage?.thumbnailUrl || selectedImage?.originalUrl}
                       alt="Active"
-                      className="w-10 h-10 rounded-lg object-cover border border-white/15 shrink-0 bg-dark-950"
+                      className="w-8 h-8 rounded-lg object-cover border border-white/15 shrink-0 bg-dark-950"
                     />
                     <div className="overflow-hidden">
-                      <span className="text-xs font-semibold text-white truncate block" title={selectedImage?.name}>
+                      <span className="text-[11px] font-semibold text-white truncate block" title={selectedImage?.name}>
                         {selectedImage?.name || 'Image'}
                       </span>
-                      <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
-                        <CheckCircle2 className="w-3 h-3" />
+                      <span className="text-[9px] text-emerald-400 flex items-center gap-1 font-mono">
+                        <CheckCircle2 className="w-2.5 h-2.5" />
                         {selectedImage?.status === 'completed' ? 'Processed' : 'Ready'}
                       </span>
                     </div>
                   </div>
+
+                  <div className="flex items-center gap-1">
+                    {images.length > 1 && (
+                      <div className="flex items-center gap-1 mr-1">
+                        <button
+                          onClick={handlePrevImage}
+                          className="px-1.5 py-1 rounded bg-dark-800 hover:bg-dark-700 text-slate-300 hover:text-white transition text-[10px]"
+                          title="Previous Image"
+                        >
+                          <ChevronLeft className="w-3 h-3" />
+                        </button>
+                        <span className="font-mono text-[10px] text-slate-400 px-1">
+                          <strong className="text-cyan-400">{activeIndex + 1}</strong>/{images.length}
+                        </span>
+                        <button
+                          onClick={handleNextImage}
+                          className="px-1.5 py-1 rounded bg-dark-800 hover:bg-dark-700 text-slate-300 hover:text-white transition text-[10px]"
+                          title="Next Image"
+                        >
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
 
                     <button
                       onClick={() => fileInputRef.current?.click()}
@@ -402,48 +410,17 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
                       <Plus className="w-3 h-3" />
                       <span>Add</span>
                     </button>
+                  </div>
                 </div>
 
-                {/* Stepper when multiple images */}
-                {images.length > 1 && (
-                  <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[11px]">
-                    <button
-                      onClick={handlePrevImage}
-                      className="px-2 py-0.5 rounded bg-dark-800 hover:bg-dark-700 text-slate-300 hover:text-white transition flex items-center gap-0.5 text-[10px]"
-                    >
-                      <ChevronLeft className="w-3 h-3" /> Prev
-                    </button>
-                    <span className="font-mono text-[10px] text-slate-400">
-                      <strong className="text-cyan-400">{activeIndex + 1}</strong> of {images.length}
-                    </span>
-                    <button
-                      onClick={handleNextImage}
-                      className="px-2 py-0.5 rounded bg-dark-800 hover:bg-dark-700 text-slate-300 hover:text-white transition flex items-center gap-0.5 text-[10px]"
-                    >
-                      Next <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Compact Image Opacity Slider */}
-                <div className="pt-1.5 border-t border-white/5 space-y-1">
-                  <div className="flex justify-between text-[10px] text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3 h-3 text-cyan-400" /> Image Opacity:
-                    </span>
-                    <span className="font-mono text-cyan-400 font-semibold">
-                      {settings.image?.opacity ?? 100}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={settings.image?.opacity ?? 100}
-                    onChange={e => onUpdateSettings('image', { opacity: Number(e.target.value) })}
-                    className="w-full accent-cyan-400 cursor-pointer h-1.5"
-                  />
-                </div>
+                {/* Auto Image to Gradient Full System */}
+                <AutoImageToGradient
+                  settings={settings}
+                  onUpdateSettings={onUpdateSettings}
+                  selectedImage={selectedImage}
+                  onUploadImages={onUploadImages}
+                  onLoadSampleImage={onLoadSampleImage}
+                />
               </div>
             )}
           </div>
@@ -462,6 +439,8 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
               selectedImage={selectedImage}
               onRandomize={onRandomize}
               onReset={onReset}
+              onUploadImages={onUploadImages}
+              onLoadSampleImage={onLoadSampleImage}
             />
           ) : (
             <>

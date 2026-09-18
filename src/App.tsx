@@ -105,6 +105,11 @@ export function App() {
     setActiveNavTab('tools');
   };
 
+  const handleLoadSamplePhoto = async () => {
+    const samples = await generateSampleImages(1);
+    addImages(samples);
+  };
+
   // Lazy load batch sample images when user opens Batch tab
   useEffect(() => {
     let isMounted = true;
@@ -192,6 +197,7 @@ export function App() {
                   onSelectPreset={applyPreset}
                   onRandomize={randomizeSettings}
                   onReset={resetSettings}
+                  onLoadSampleImage={handleLoadSamplePhoto}
                 />
               </div>
 
