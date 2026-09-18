@@ -33,6 +33,7 @@ export function App() {
     redo,
     canUndo,
     canRedo,
+    resetSettings,
     randomizeSettings,
     startBatch,
     pauseBatch,
@@ -154,6 +155,7 @@ export function App() {
               onOpen3DStudio={() => setIs3DModalOpen(true)}
               onSelectPreset={applyPreset}
               onRandomize={randomizeSettings}
+              onReset={resetSettings}
             />
 
             {/* Right: Center Canvas Viewport + Bottom Multi-Image Strip */}

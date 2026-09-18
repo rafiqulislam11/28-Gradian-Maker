@@ -236,6 +236,13 @@ export function useStudio() {
     [pushHistory]
   );
 
+  // Reset all settings to factory default
+  const resetSettings = useCallback(() => {
+    const next: FilterSettings = JSON.parse(JSON.stringify(DEFAULT_FILTER_SETTINGS));
+    setSettings(next);
+    pushHistory(next);
+  }, [pushHistory]);
+
   // Randomize all settings for instant inspiration
   const randomizeSettings = useCallback(() => {
     const palettes = [
@@ -424,6 +431,7 @@ export function useStudio() {
     redo,
     canUndo,
     canRedo,
+    resetSettings,
     randomizeSettings,
     startBatch,
     pauseBatch,
