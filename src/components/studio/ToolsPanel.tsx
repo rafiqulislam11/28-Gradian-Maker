@@ -29,6 +29,7 @@ import { FilterSettings, BlurCategory, NoiseType, ImageItem, Preset, ExportForma
 import { CREATIVE_PRESETS } from '../../engine/presets';
 import { GradientStudioPanel } from './GradientStudioPanel';
 import { PatternStudioPanel } from './PatternStudioPanel';
+import { EasyStudioPanel } from './EasyStudioPanel';
 
 export type ToolFilterTab = 'gradient' | 'blur' | 'noise' | 'patterns' | 'upscale' | 'presets' | 'all';
 
@@ -78,6 +79,7 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [processedStatus, setProcessedStatus] = useState<string | null>(null);
+  const [panelMode, setPanelMode] = useState<'easy' | 'pro'>('easy');
   const [activeCategory, setActiveCategory] = useState<ToolFilterTab>('gradient');
 
   // Accordion state when 'all' is active
@@ -196,8 +198,8 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
         {/* ======================================================== */}
         {/* 1. STICKY PANEL HEADER WITH QUICK ACTIONS               */}
         {/* ======================================================== */}
-        <div className="p-3.5 pb-2.5 border-b border-white/10 bg-dark-950/60 backdrop-blur-md shrink-0">
-          <div className="flex items-center justify-between mb-2.5">
+        <div className="p-3 pb-2.5 border-b border-white/10 bg-dark-950/70 backdrop-blur-md shrink-0 space-y-2">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500 to-violet-500 p-0.5 shadow-md shadow-cyan-500/20 flex items-center justify-center">
                 <Sliders className="w-4 h-4 text-white" />
@@ -210,86 +212,100 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
               </div>
             </div>
 
-            {/* Quick Action Icons (Randomize, Reset, 3D, Pattern) */}
-            <div className="flex items-center gap-1">
-              {onRandomize && (
-                <button
-                  onClick={onRandomize}
-                  className="p-1.5 rounded-lg bg-dark-900 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 border border-white/10 hover:border-cyan-400/40 transition active:scale-95"
-                  title="Randomize style (Creative surprise)"
-                >
-                  <Dices className="w-3.5 h-3.5" />
-                </button>
-              )}
-
-              {onReset && (
-                <button
-                  onClick={onReset}
-                  className="p-1.5 rounded-lg bg-dark-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-white/10 hover:border-rose-400/40 transition active:scale-95"
-                  title="Reset all settings to default"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              )}
-
-              {onOpen3DStudio && (
-                <button
-                  onClick={onOpen3DStudio}
-                  className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition active:scale-95"
-                  title="Open 3D Wood & Texture Studio"
-                >
-                  <Box className="w-3.5 h-3.5" />
-                </button>
-              )}
-
+            {/* Mode Switcher: Easy (সহজ) vs Pro */}
+            <div className="flex items-center p-0.5 rounded-xl bg-dark-900 border border-white/10 shadow-inner">
               <button
-                onClick={onOpenPatternModal}
-                className="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition active:scale-95"
-                title="Open 500+ Pattern Library"
+                onClick={() => setPanelMode('easy')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  panelMode === 'easy'
+                    ? 'bg-gradient-to-r from-cyan-400 to-teal-400 text-dark-950 shadow-md shadow-cyan-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Easy Mode: 1-Click Simple Controls (সহজ ফিচার)"
               >
-                <Grid className="w-3.5 h-3.5" />
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Easy (সহজ)</span>
+              </button>
+              <button
+                onClick={() => setPanelMode('pro')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
+                  panelMode === 'pro'
+                    ? 'bg-dark-800 text-cyan-300 font-bold border border-cyan-500/30 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Pro Mode: Detailed granular controls (প্রো মোড)"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Pro</span>
               </button>
             </div>
           </div>
 
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-[11px]">
-            {categories.map(tab => {
-              const Icon = tab.icon;
-              const isCurrent = activeCategory === tab.id;
+          {/* Subheader: Category Filter Pills (Pro) OR Simple Info Bar (Easy) */}
+          {panelMode === 'pro' ? (
+            <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none text-[11px]">
+              {categories.map(tab => {
+                const Icon = tab.icon;
+                const isCurrent = activeCategory === tab.id;
 
-              return (
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveCategory(tab.id)}
+                    className={`px-2.5 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 shrink-0 relative ${
+                      isCurrent
+                        ? 'bg-cyan-400 text-dark-950 font-bold shadow-md shadow-cyan-400/20'
+                        : 'text-slate-400 hover:text-slate-200 bg-dark-900/80 hover:bg-dark-900 border border-white/5 hover:border-white/15'
+                    }`}
+                  >
+                    <Icon className={`w-3 h-3 ${isCurrent ? 'text-dark-950' : 'text-slate-400'}`} />
+                    <span>{tab.label}</span>
+
+                    {tab.isActive && !isCurrent && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-glow-cyan" />
+                    )}
+
+                    {tab.badge && (
+                      <span
+                        className={`px-1 py-0.2 rounded text-[9px] font-mono font-bold ${
+                          isCurrent
+                            ? 'bg-dark-950 text-cyan-400'
+                            : 'bg-cyan-400/20 text-cyan-300'
+                        }`}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-1 text-[11px]">
+              <span className="text-cyan-300 font-medium flex items-center gap-1">
+                <span>⚡</span>
+                <span>সহজ মোড: ১-ক্লিকে চমৎকার লুক ও কন্ট্রোলস</span>
+              </span>
+              <div className="flex items-center gap-1">
+                {onOpen3DStudio && (
+                  <button
+                    onClick={onOpen3DStudio}
+                    className="p-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition active:scale-95"
+                    title="Open 3D Wood Studio"
+                  >
+                    <Box className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveCategory(tab.id)}
-                  className={`px-2.5 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 shrink-0 relative ${
-                    isCurrent
-                      ? 'bg-cyan-400 text-dark-950 font-bold shadow-md shadow-cyan-400/20'
-                      : 'text-slate-400 hover:text-slate-200 bg-dark-900/80 hover:bg-dark-900 border border-white/5 hover:border-white/15'
-                  }`}
+                  onClick={onOpenPatternModal}
+                  className="p-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition active:scale-95"
+                  title="Open 500+ Pattern Library"
                 >
-                  <Icon className={`w-3 h-3 ${isCurrent ? 'text-dark-950' : 'text-slate-400'}`} />
-                  <span>{tab.label}</span>
-
-                  {tab.isActive && !isCurrent && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-glow-cyan" />
-                  )}
-
-                  {tab.badge && (
-                    <span
-                      className={`px-1 py-0.2 rounded text-[9px] font-mono font-bold ${
-                        isCurrent
-                          ? 'bg-dark-950 text-cyan-400'
-                          : 'bg-cyan-400/20 text-cyan-300'
-                      }`}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
+                  <Grid className="w-3.5 h-3.5" />
                 </button>
-              );
-            })}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Hidden Multi-File Input */}
@@ -432,11 +448,24 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
             )}
           </div>
 
-          {/* ====================================================== */}
-          {/* TAB: GRADIENTS                                         */}
-          {/* ====================================================== */}
-          {(activeCategory === 'gradient' || activeCategory === 'all') && (
-            <div className="space-y-2">
+          {/* EASY MODE VS PRO MODE CONTENT */}
+          {panelMode === 'easy' ? (
+            <EasyStudioPanel
+              settings={settings}
+              onUpdateSettings={onUpdateSettings}
+              onOpenPatternModal={onOpenPatternModal}
+              onOpen3DStudio={onOpen3DStudio}
+              selectedImage={selectedImage}
+              onRandomize={onRandomize}
+              onReset={onReset}
+            />
+          ) : (
+            <>
+              {/* ====================================================== */}
+              {/* TAB: GRADIENTS                                         */}
+              {/* ====================================================== */}
+              {(activeCategory === 'gradient' || activeCategory === 'all') && (
+                <div className="space-y-2">
               {activeCategory === 'all' && (
                 <button
                   onClick={() => toggleSection('gradient')}
@@ -965,6 +994,8 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({
                 </div>
               )}
             </div>
+          )}
+            </>
           )}
         </div>
 
