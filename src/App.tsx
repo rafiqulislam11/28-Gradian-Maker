@@ -1,21 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStudio } from './store/useStudioStore';
+import { useProjectStore } from './store/useProjectStore';
 import { Navbar, MainNavTab } from './components/layout/Navbar';
-import { ToolsPanel } from './components/studio/ToolsPanel';
-import { CanvasStudio } from './components/studio/CanvasStudio';
+import { LayerPanel } from './components/layers/LayerPanel';
+import { CanvasViewport } from './components/editor/CanvasViewport';
+import { InspectorPanel } from './components/inspector/InspectorPanel';
+import { DesignGeneratorView } from './components/generator/DesignGeneratorView';
+import { ExportCenterModal } from './components/export/ExportCenterModal';
+import { TemplateLibraryModal } from './components/templates/TemplateLibraryModal';
+import { ControlledRandomizeModal } from './components/randomize/ControlledRandomizeModal';
 import { BatchQueue } from './components/viewport/BatchQueue';
 import { CodeExportModal } from './components/common/CodeExportModal';
 import { PatternLibraryModal } from './components/common/PatternLibraryModal';
 import { ThreeDStudioModal } from './components/studio/ThreeDStudioModal';
 import { VectorStudioView } from './components/studio/VectorStudioView';
 import { generateSampleImages } from './engine/sampleGenerator';
-import { extractPaletteFromImage } from './engine/colorExtractor';
-import { Check, Zap, Sparkles, Shield, User, Key, HardDrive, Eye, Sliders } from 'lucide-react';
 import { ImageItem } from './types/studio';
-import { useThemeAndLanguage } from './context/ThemeLanguageContext';
+import { Project, Layer, ImageLayer, DEFAULT_TRANSFORM, DEFAULT_ADJUSTMENTS } from './types/project';
+import { triggerFileDownload } from './engine/export/exportEngine';
+import { Check, Eye, Sliders, Layers } from 'lucide-react';
 
 export function App() {
-  const { t } = useThemeAndLanguage();
+  // Existing Studio store (Batch Queue, Worker pool, Samples, etc.)
   const {
     images,
     selectedImage,
@@ -32,13 +38,6 @@ export function App() {
     removeImage,
     clearImages,
     updateSettings,
-    applyPreset,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    resetSettings,
-    randomizeSettings,
     startBatch,
     pauseBatch,
     resumeBatch,
@@ -46,13 +45,67 @@ export function App() {
     exportZip,
   } = useStudio();
 
-  const [activeNavTab, setActiveNavTab] = useState<MainNavTab>('tools');
-  const [mobileStudioTab, setMobileStudioTab] = useState<'canvas' | 'tools'>('canvas');
+  // Upgraded Project Store (Layers, Transforms, Compositor, History)
+  const {
+    project,
+    activeLayer,
+    activeTool,
+    zoomLevel,
+    panOffset,
+    showGrid,
+    showGuides,
+    showSafeArea,
+    isSplitEnabled,
+    splitPos,
+    isHoldingOriginal,
+    canUndo,
+    canRedo,
+    setProject,
+    setActiveTool,
+    setZoomLevel,
+    setPanOffset,
+    setShowGrid,
+    setShowGuides,
+    setShowSafeArea,
+    setIsSplitEnabled,
+    setSplitPos,
+    setIsHoldingOriginal,
+    setSelectedLayer,
+    addLayer,
+    updateLayer,
+    updateTransform,
+    removeLayer,
+    duplicateLayer,
+    reorderLayers,
+    toggleLayerVisibility,
+    toggleLayerLock,
+    toggleLayerSolo,
+    renameLayer,
+    centerLayer,
+    flipHorizontal,
+    flipVertical,
+    resetTransform,
+    applyRecipe,
+    resetProject,
+    updateProjectMeta,
+    undo,
+    redo,
+  } = useProjectStore();
+
+  const [activeNavTab, setActiveNavTab] = useState<MainNavTab>('studio');
+  const [mobileTab, setMobileTab] = useState<'canvas' | 'layers' | 'inspector'>('canvas');
+
+  // Modals
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+  const [isRandomizeModalOpen, setIsRandomizeModalOpen] = useState(false);
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
   const [isPatternModalOpen, setIsPatternModalOpen] = useState(false);
   const [is3DModalOpen, setIs3DModalOpen] = useState(false);
 
-  // Multi-image upload handler (supports 30+ files simultaneously)
+  const projectFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Multi-image upload handler
   const handleUploadImages = async (files: File[]) => {
     if (!files || files.length === 0) return;
 
@@ -76,76 +129,154 @@ export function App() {
 
     addImages(newItems);
 
-    // Auto extract palette from first image to tune mesh gradient
-    try {
+    // Also add as ImageLayer in the Project
+    files.forEach(file => {
+      const url = URL.createObjectURL(file);
       const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = newItems[0].originalUrl;
-      await img.decode();
-      const colors = await extractPaletteFromImage(img, 4);
-      if (colors.length >= 4) {
-        updateSettings('gradient', {
-          meshColors: [colors[0], colors[1], colors[2], colors[3]],
-          stops: [
-            { id: '1', color: colors[0], position: 0 },
-            { id: '2', color: colors[1], position: 35 },
-            { id: '3', color: colors[2], position: 70 },
-            { id: '4', color: colors[3], position: 100 },
-          ],
-        });
-        updateSettings('gradientMaker', {
-          meshColors: [colors[0], colors[1], colors[2], colors[3]],
-          stops: [
-            { id: '1', color: colors[0], position: 0 },
-            { id: '2', color: colors[1], position: 50 },
-            { id: '3', color: colors[2], position: 100 },
-          ],
-        });
-      }
-    } catch (e) {
-      console.warn('Auto color extraction notice:', e);
-    }
+      img.src = url;
+      img.onload = () => {
+        const imgLayer: Partial<ImageLayer> = {
+          name: file.name.replace(/\.[^/.]+$/, ''),
+          type: 'image',
+          src: url,
+          naturalWidth: img.naturalWidth,
+          naturalHeight: img.naturalHeight,
+          adjustments: { ...DEFAULT_ADJUSTMENTS },
+          transform: {
+            ...DEFAULT_TRANSFORM,
+            width: Math.min(project.width * 0.8, img.naturalWidth || 800),
+            height: Math.min(project.height * 0.8, img.naturalHeight || 600),
+            x: Math.round((project.width - Math.min(project.width * 0.8, img.naturalWidth || 800)) / 2),
+            y: Math.round((project.height - Math.min(project.height * 0.8, img.naturalHeight || 600)) / 2),
+          },
+        };
+        addLayer(imgLayer);
+      };
+    });
   };
 
-  const handleApplySingle = () => {
-    if (images.length === 0) return;
-    startBatch(false);
+  // Upload single image from LayerPanel
+  const handleUploadSingleImage = (file: File) => {
+    handleUploadImages([file]);
   };
 
-  const handleEditInStudio = (id: string) => {
-    setSelectedImageId(id);
-    setActiveNavTab('tools');
-  };
-
+  // 3D Studio texture snapshot receiver
   const handleSendFrom3D = (newImage: ImageItem) => {
     addImages([newImage]);
-    setSelectedImageId(newImage.id);
-    setActiveNavTab('tools');
-  };
-
-  const handleLoadSamplePhoto = async () => {
-    const samples = await generateSampleImages(1);
-    addImages(samples);
-  };
-
-  // Lazy load batch sample images when user opens Batch tab
-  useEffect(() => {
-    let isMounted = true;
-    if (activeNavTab === 'batch' && images.length === 0) {
-      generateSampleImages(8).then(initialSamples => {
-        if (isMounted && images.length === 0) {
-          addImages(initialSamples);
-        }
-      });
-    }
-    return () => {
-      isMounted = false;
+    const imgLayer: Partial<ImageLayer> = {
+      name: '3D Lumber Texture',
+      type: 'image',
+      src: newImage.originalUrl,
+      naturalWidth: 1920,
+      naturalHeight: 1080,
+      adjustments: { ...DEFAULT_ADJUSTMENTS },
+      transform: {
+        ...DEFAULT_TRANSFORM,
+        width: project.width,
+        height: project.height,
+        x: 0,
+        y: 0,
+      },
     };
-  }, [activeNavTab, images.length, addImages]);
+    addLayer(imgLayer);
+    setActiveNavTab('studio');
+  };
+
+  // Save Project JSON
+  const handleSaveProject = () => {
+    const json = JSON.stringify(project, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    triggerFileDownload(url, `${project.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}.gxproject.json`);
+    URL.revokeObjectURL(url);
+  };
+
+  // Load Project JSON
+  const handleProjectFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string);
+        if (parsed && parsed.layers) {
+          setProject(parsed);
+        }
+      } catch (err) {
+        alert('Invalid .gxproject JSON file format.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // Edit generated design in studio
+  const handleEditGeneratedDesign = (genProject: Project) => {
+    setProject(genProject);
+    setActiveNavTab('studio');
+  };
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+      // Undo: Ctrl+Z
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) undo();
+      }
+      // Redo: Ctrl+Shift+Z or Ctrl+Y
+      else if ((e.ctrlKey || e.metaKey) && ((e.key.toLowerCase() === 'z' && e.shiftKey) || e.key.toLowerCase() === 'y')) {
+        e.preventDefault();
+        if (canRedo) redo();
+      }
+      // Save: Ctrl+S
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSaveProject();
+      }
+      // Export: Ctrl+E
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        setIsExportModalOpen(true);
+      }
+      // Duplicate: Ctrl+D
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        if (activeLayer) duplicateLayer(activeLayer.id);
+      }
+      // Delete: Delete or Backspace
+      else if (e.key === 'Delete') {
+        if (activeLayer) {
+          e.preventDefault();
+          removeLayer(activeLayer.id);
+        }
+      }
+      // Tool shortcuts: V = select, H = pan
+      else if (e.key.toLowerCase() === 'v') {
+        setActiveTool('select');
+      } else if (e.key.toLowerCase() === 'h') {
+        setActiveTool('pan');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canUndo, canRedo, undo, redo, activeLayer, duplicateLayer, removeLayer, setActiveTool]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0a0d14] text-slate-100 font-sans selection:bg-cyan-400 selection:text-dark-950">
-      {/* Top Navbar */}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#070912] text-slate-100 font-sans selection:bg-cyan-400 selection:text-dark-950">
+      {/* Hidden Project JSON File Input */}
+      <input
+        ref={projectFileInputRef}
+        type="file"
+        accept=".json,.gxproject"
+        className="hidden"
+        onChange={handleProjectFileChange}
+      />
+
+      {/* 1. TOP NAVBAR & MODULE SWITCHER */}
       <Navbar
         activeNavTab={activeNavTab}
         setActiveNavTab={setActiveNavTab}
@@ -153,153 +284,155 @@ export function App() {
         isProcessing={isProcessing}
         onOpen3DStudio={() => setIs3DModalOpen(true)}
         onOpenPatternLibrary={() => setIsPatternModalOpen(true)}
+        onOpenTemplates={() => setIsTemplatesModalOpen(true)}
+        onOpenRandomize={() => setIsRandomizeModalOpen(true)}
+        onOpenExport={() => setIsExportModalOpen(true)}
+        onOpenCodeExport={() => setIsCodeModalOpen(true)}
+        onNewProject={() => resetProject()}
+        onSaveProject={handleSaveProject}
+        onOpenProjectFile={() => projectFileInputRef.current?.click()}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
       />
 
-      {/* Main Container */}
-      <div className="flex-1 flex flex-col px-2.5 sm:px-5 lg:px-8 pb-3 sm:pb-5 overflow-hidden min-h-0">
-        {/* 2-Part Quick Module Switcher Ribbon */}
-        <div className="flex items-center justify-between py-1.5 px-3 mb-2.5 rounded-xl bg-[#0e1320]/90 border border-white/10 shrink-0 shadow-md">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono text-slate-400 font-bold hidden sm:inline">{t('app_tagline', 'AI Studio')}:</span>
-
-            {/* Part 1: Image Part */}
-            <button
-              onClick={() => setActiveNavTab('tools')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
-                activeNavTab === 'tools'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30'
-                  : 'bg-dark-900 text-slate-400 hover:text-white hover:bg-dark-800'
-              }`}
-            >
-              <span className={`text-[9px] font-mono px-1 py-0.2 rounded font-black ${
-                activeNavTab === 'tools' ? 'bg-black/40 text-cyan-200' : 'bg-white/10 text-slate-400'
-              }`}>
-                {t('part_1_badge', 'PART 1')}
-              </span>
-              <span>{t('part_1_name', 'Image Part')}</span>
-            </button>
-
-            {/* Part 2: Victor Part */}
-            <button
-              onClick={() => setActiveNavTab('vector')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
-                activeNavTab === 'vector'
-                  ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-dark-950 shadow-md shadow-teal-500/30 font-extrabold'
-                  : 'bg-dark-900 text-slate-400 hover:text-white hover:bg-dark-800'
-              }`}
-            >
-              <span className={`text-[9px] font-mono px-1 py-0.2 rounded font-black ${
-                activeNavTab === 'vector' ? 'bg-black/30 text-dark-950' : 'bg-white/10 text-slate-400'
-              }`}>
-                {t('part_2_badge', 'PART 2')}
-              </span>
-              <span>{t('part_2_name', 'Victor Part')}</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400 text-[11px] font-medium hidden md:inline">
-              {activeNavTab === 'tools' ? t('part_1_desc') : activeNavTab === 'vector' ? t('part_2_desc') : ''}
-            </span>
-          </div>
-        </div>
-
-        {activeNavTab === 'tools' && (
-          <>
-            {/* Mobile / Tablet Segmented View Switcher (Visible on < lg) */}
-            <div className="lg:hidden flex items-center justify-center pb-2.5 shrink-0">
-              <div className="flex items-center p-1 rounded-xl bg-[#121620] border border-white/10 shadow-lg">
+      {/* 2. MAIN WORKSPACE CONTAINER */}
+      <div className="flex-1 flex flex-col px-2 sm:px-4 lg:px-6 pb-2 sm:pb-4 overflow-hidden min-h-0 pt-2">
+        {/* ======================================================== */}
+        {/* VIEW 1: STUDIO PRO (MAIN MULTI-LAYER CREATIVE SUITE)    */}
+        {/* ======================================================== */}
+        {activeNavTab === 'studio' && (
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            {/* Mobile / Tablet View Switcher (Visible on < lg) */}
+            <div className="lg:hidden flex items-center justify-center pb-2 shrink-0">
+              <div className="flex items-center p-1 rounded-xl bg-[#121624] border border-white/10 shadow-lg">
                 <button
-                  onClick={() => setMobileStudioTab('canvas')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                    mobileStudioTab === 'canvas'
-                      ? 'bg-cyan-400 text-dark-950 font-bold shadow-md shadow-cyan-400/20'
+                  onClick={() => setMobileTab('layers')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                    mobileTab === 'layers'
+                      ? 'bg-cyan-500 text-dark-950 font-bold shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Layers</span>
+                </button>
+                <button
+                  onClick={() => setMobileTab('canvas')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                    mobileTab === 'canvas'
+                      ? 'bg-cyan-500 text-dark-950 font-bold shadow-md'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   <Eye className="w-3.5 h-3.5" />
-                  <span>{t('nav_image_studio', 'Canvas Studio')}</span>
+                  <span>Canvas</span>
                 </button>
                 <button
-                  onClick={() => setMobileStudioTab('tools')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                    mobileStudioTab === 'tools'
-                      ? 'bg-cyan-400 text-dark-950 font-bold shadow-md shadow-cyan-400/20'
+                  onClick={() => setMobileTab('inspector')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                    mobileTab === 'inspector'
+                      ? 'bg-cyan-500 text-dark-950 font-bold shadow-md'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   <Sliders className="w-3.5 h-3.5" />
-                  <span>{t('tools_header', 'Tool Panels')}</span>
+                  <span>Inspector</span>
                 </button>
               </div>
             </div>
 
-            {/* Responsive Workspace: Side-by-Side on Desktop, Tabbed Switch on Mobile/Tablet */}
-            <div className="flex-1 flex overflow-hidden gap-4 lg:gap-6 min-h-0">
-              {/* Left: Tools Panel */}
+            {/* Main Creative Layout: LEFT (Layers) | CENTER (Canvas) | RIGHT (Inspector) */}
+            <div className="flex-1 flex overflow-hidden gap-3 lg:gap-4 min-h-0">
+              {/* LEFT: Photoshop-Style Layer Panel */}
               <div
                 className={`h-full ${
-                  mobileStudioTab === 'tools' ? 'flex flex-1 w-full' : 'hidden'
-                } lg:flex lg:w-[360px] xl:w-[385px] shrink-0 min-h-0`}
+                  mobileTab === 'layers' ? 'flex flex-1 w-full' : 'hidden'
+                } lg:flex lg:w-[280px] xl:w-[310px] shrink-0 min-h-0`}
               >
-                <ToolsPanel
-                  settings={settings}
-                  onUpdateSettings={updateSettings}
-                  onApplySingle={handleApplySingle}
-                  onStartBatch={() => startBatch(true)}
-                  onExportZip={exportZip}
-                  images={images}
-                  selectedImage={selectedImage}
-                  onSelectImage={setSelectedImageId}
-                  onUploadImages={handleUploadImages}
-                  onRemoveImage={removeImage}
-                  onClearAllImages={clearImages}
-                  isProcessingBatch={isProcessing}
-                  isExportingZip={isExportingZip}
-                  onViewBatchQueue={() => setActiveNavTab('batch')}
-                  onOpenPatternModal={() => setIsPatternModalOpen(true)}
-                  onOpen3DStudio={() => setIs3DModalOpen(true)}
-                  onOpenVictorStudio={() => setActiveNavTab('vector')}
-                  onSelectPreset={applyPreset}
-                  onRandomize={randomizeSettings}
-                  onReset={resetSettings}
-                  onLoadSampleImage={handleLoadSamplePhoto}
+                <LayerPanel
+                  layers={project.layers}
+                  activeLayerId={project.activeLayerId}
+                  onSelectLayer={setSelectedLayer}
+                  onAddLayer={addLayer}
+                  onRemoveLayer={removeLayer}
+                  onDuplicateLayer={duplicateLayer}
+                  onReorderLayers={reorderLayers}
+                  onToggleVisibility={toggleLayerVisibility}
+                  onToggleLock={toggleLayerLock}
+                  onToggleSolo={toggleLayerSolo}
+                  onRenameLayer={renameLayer}
+                  onUpdateLayer={updateLayer}
+                  onUploadImage={handleUploadSingleImage}
                 />
               </div>
 
-              {/* Right: Center Canvas Viewport + Bottom Multi-Image Strip */}
+              {/* CENTER: Interactive Canvas Viewport */}
               <div
                 className={`h-full ${
-                  mobileStudioTab === 'canvas' ? 'flex flex-1 w-full' : 'hidden'
+                  mobileTab === 'canvas' ? 'flex flex-1 w-full' : 'hidden'
                 } lg:flex lg:flex-1 min-w-0 min-h-0`}
               >
-                <CanvasStudio
-                  settings={settings}
-                  onUpdateSettings={updateSettings}
-                  onOpenCodeModal={() => setIsCodeModalOpen(true)}
-                  images={images}
-                  selectedImage={selectedImage}
-                  onSelectImage={setSelectedImageId}
-                  onUploadImages={handleUploadImages}
-                  onRemoveImage={removeImage}
-                  onStartBatch={() => startBatch(true)}
-                  onExportZip={exportZip}
-                  isProcessingBatch={isProcessing}
-                  isExportingZip={isExportingZip}
-                  onViewBatchQueue={() => setActiveNavTab('batch')}
-                  onOpen3DStudio={() => setIs3DModalOpen(true)}
-                  onUndo={undo}
-                  onRedo={redo}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  onRandomize={randomizeSettings}
-                  onOpenMobileTools={() => setMobileStudioTab('tools')}
+                <CanvasViewport
+                  project={project}
+                  activeLayer={activeLayer}
+                  activeTool={activeTool}
+                  zoomLevel={zoomLevel}
+                  panOffset={panOffset}
+                  showGrid={showGrid}
+                  showGuides={showGuides}
+                  showSafeArea={showSafeArea}
+                  isSplitEnabled={isSplitEnabled}
+                  splitPos={splitPos}
+                  isHoldingOriginal={isHoldingOriginal}
+                  onSetZoom={setZoomLevel}
+                  onSetPan={setPanOffset}
+                  onToggleGrid={() => setShowGrid(!showGrid)}
+                  onToggleSafeArea={() => setShowSafeArea(!showSafeArea)}
+                  onToggleSplit={() => setIsSplitEnabled(!isSplitEnabled)}
+                  onSetSplitPos={setSplitPos}
+                  onSetHoldingOriginal={setIsHoldingOriginal}
+                  onUpdateTransform={updateTransform}
+                  onSelectLayer={setSelectedLayer}
+                  onSetActiveTool={setActiveTool}
+                />
+              </div>
+
+              {/* RIGHT: Properties Inspector */}
+              <div
+                className={`h-full ${
+                  mobileTab === 'inspector' ? 'flex flex-1 w-full' : 'hidden'
+                } lg:flex lg:w-[330px] xl:w-[360px] shrink-0 min-h-0`}
+              >
+                <InspectorPanel
+                  activeLayer={activeLayer}
+                  onUpdateLayer={updateLayer}
+                  onUpdateTransform={updateTransform}
+                  onCenterLayer={centerLayer}
+                  onFlipH={flipHorizontal}
+                  onFlipV={flipVertical}
+                  onResetTransform={resetTransform}
+                  onOpenPatternModal={() => setIsPatternModalOpen(true)}
                 />
               </div>
             </div>
-          </>
+          </div>
         )}
 
+        {/* ======================================================== */}
+        {/* VIEW 2: 1000 DESIGN GENERATOR                            */}
+        {/* ======================================================== */}
+        {activeNavTab === 'generator' && (
+          <DesignGeneratorView
+            currentProject={project}
+            onEditInStudio={handleEditGeneratedDesign}
+          />
+        )}
+
+        {/* ======================================================== */}
+        {/* VIEW 3: VECTOR STUDIO (SVG, ICON SHEET, REMOVE WHITE)    */}
+        {/* ======================================================== */}
         {activeNavTab === 'vector' && (
           <VectorStudioView
             images={images}
@@ -307,11 +440,17 @@ export function App() {
             onSelectImage={setSelectedImageId}
             onUploadImages={handleUploadImages}
             onUpdateImages={setImages}
-            onLoadSampleImage={handleLoadSamplePhoto}
-            onSwitchToImagePart={() => setActiveNavTab('tools')}
+            onLoadSampleImage={async () => {
+              const samples = await generateSampleImages(1);
+              addImages(samples);
+            }}
+            onSwitchToImagePart={() => setActiveNavTab('studio')}
           />
         )}
 
+        {/* ======================================================== */}
+        {/* VIEW 4: BATCH WORKER QUEUE                               */}
+        {/* ======================================================== */}
         {activeNavTab === 'batch' && (
           <div className="flex-1 flex flex-col rounded-2xl bg-[#0e121b] border border-white/10 overflow-hidden shadow-2xl">
             <BatchQueue
@@ -330,113 +469,92 @@ export function App() {
               onExportZip={exportZip}
               isExportingZip={isExportingZip}
               stats={stats}
-              onEditInStudio={handleEditInStudio}
+              onEditInStudio={id => {
+                setSelectedImageId(id);
+                setActiveNavTab('studio');
+              }}
             />
           </div>
         )}
 
+        {/* ======================================================== */}
+        {/* VIEW 5: PRICING / PLANS                                  */}
+        {/* ======================================================== */}
         {activeNavTab === 'pricing' && (
-          <div className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8 overflow-y-auto">
-            <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 my-auto">
-              {/* Free Plan */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-[#121620] border border-white/10 flex flex-col justify-between">
+          <div className="flex-1 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6 my-auto">
+              <div className="p-6 rounded-2xl bg-[#121620] border border-white/10 flex flex-col justify-between">
                 <div>
                   <h4 className="text-lg font-bold text-white mb-1">Starter</h4>
-                  <p className="text-xs text-slate-400 mb-4">For individual creative styling</p>
+                  <p className="text-xs text-slate-400 mb-4">For individual creative exploration</p>
                   <div className="text-2xl font-black text-white mb-4">$0 <span className="text-xs text-slate-400 font-normal">/ forever</span></div>
                   <ul className="space-y-2 text-xs text-slate-300 mb-6">
-                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Full Gradient & Blur Studio</li>
-                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Noise & Fractal Generator</li>
-                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Up to 50 batch images</li>
+                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Layer & Transform Suite</li>
+                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> 500+ Pattern Engine</li>
+                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Up to 50 design variations</li>
                   </ul>
                 </div>
-                <button onClick={() => setActiveNavTab('tools')} className="w-full py-2 rounded-xl bg-dark-800 text-xs font-semibold text-slate-200 hover:bg-dark-700 transition">Current Plan</button>
+                <button onClick={() => setActiveNavTab('studio')} className="w-full py-2 rounded-xl bg-dark-800 text-xs font-semibold text-slate-200 hover:bg-dark-700 transition">Current Free Mode</button>
               </div>
 
-              {/* Pro Studio Plan */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-[#1a2338] to-[#121620] border border-cyan-400/50 shadow-xl shadow-cyan-500/10 flex flex-col justify-between relative">
-                <span className="absolute -top-3 right-6 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-cyan-400 text-dark-950">Most Popular</span>
+              <div className="p-6 rounded-2xl bg-gradient-to-b from-[#1a2338] to-[#121620] border border-cyan-400/50 shadow-xl shadow-cyan-500/10 flex flex-col justify-between relative">
+                <span className="absolute -top-3 right-6 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-cyan-400 text-dark-950">Active License</span>
                 <div>
-                  <h4 className="text-lg font-bold text-white mb-1">Studio Pro</h4>
-                  <p className="text-xs text-slate-400 mb-4">For professional designers & agencies</p>
-                  <div className="text-2xl font-black text-cyan-400 mb-4">$19 <span className="text-xs text-slate-400 font-normal">/ month</span></div>
+                  <h4 className="text-lg font-bold text-white mb-1">Studio Pro Master</h4>
+                  <p className="text-xs text-slate-400 mb-4">Complete Creative Graphics Suite</p>
+                  <div className="text-2xl font-black text-cyan-400 mb-4">PRO <span className="text-xs text-slate-400 font-normal">/ Unlimited</span></div>
                   <ul className="space-y-2 text-xs text-slate-300 mb-6">
-                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Unlimited 500+ Batch Queue</li>
+                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> 1000 Design Generator Engine</li>
                     <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> 8K Studio AI Upscale Master</li>
-                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Multi-Core Web Worker Pool</li>
-                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> High-Speed ZIP Bundler</li>
+                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Photoshop Layer Stack & Masks</li>
+                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> SVG & Icon Pack Exporters</li>
                   </ul>
                 </div>
-                <button onClick={() => setActiveNavTab('tools')} className="w-full py-2 rounded-xl bg-cyan-400 text-dark-950 font-bold text-xs shadow-lg shadow-cyan-500/25 hover:bg-cyan-300 transition">Get Studio Pro</button>
+                <button onClick={() => setActiveNavTab('studio')} className="w-full py-2 rounded-xl bg-cyan-400 text-dark-950 font-bold text-xs shadow-lg shadow-cyan-500/25 hover:bg-cyan-300 transition">Launch Studio Pro</button>
               </div>
 
-              {/* Enterprise */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-[#121620] border border-white/10 flex flex-col justify-between">
+              <div className="p-6 rounded-2xl bg-[#121620] border border-white/10 flex flex-col justify-between">
                 <div>
-                  <h4 className="text-lg font-bold text-white mb-1">Cluster Enterprise</h4>
-                  <p className="text-xs text-slate-400 mb-4">Dedicated Node.js/Python cluster</p>
+                  <h4 className="text-lg font-bold text-white mb-1">Enterprise Cloud</h4>
+                  <p className="text-xs text-slate-400 mb-4">Dedicated Node/GPU Rendering API</p>
                   <div className="text-2xl font-black text-white mb-4">$79 <span className="text-xs text-slate-400 font-normal">/ month</span></div>
                   <ul className="space-y-2 text-xs text-slate-300 mb-6">
-                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Server-side Sharp & GPU Cluster</li>
+                    <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Cluster Sharp & GPU Workers</li>
                     <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> 10,000+ Concurrent Images</li>
                     <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-cyan-400" /> Custom API & Webhook Dispatch</li>
                   </ul>
                 </div>
-                <button onClick={() => setActiveNavTab('tools')} className="w-full py-2 rounded-xl bg-dark-800 text-xs font-semibold text-slate-200 hover:bg-dark-700 transition">Contact Enterprise</button>
+                <button onClick={() => setActiveNavTab('studio')} className="w-full py-2 rounded-xl bg-dark-800 text-xs font-semibold text-slate-200 hover:bg-dark-700 transition">Contact Enterprise</button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {activeNavTab === 'account' && (
-          <div className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8 overflow-y-auto">
-            <div className="w-full max-w-xl p-5 sm:p-6 rounded-2xl bg-[#121620] border border-white/10 space-y-6 my-auto">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-cyan-400 to-purple-500 flex items-center justify-center text-dark-950 font-bold text-lg sm:text-xl shadow-lg shadow-cyan-500/20 shrink-0">
-                  GX
-                </div>
-                <div className="overflow-hidden">
-                  <h3 className="text-base font-bold text-white">Creative Director</h3>
-                  <p className="text-xs text-slate-400 truncate">pro@gradientx.studio • Studio Pro License Active</p>
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-2">
-                <div className="p-3 rounded-xl bg-dark-900/60 border border-white/5 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <HardDrive className="w-4 h-4 text-cyan-400" />
-                    <div>
-                      <span className="text-xs font-medium text-white block">Local Hardware Concurrency</span>
-                      <span className="text-[10px] text-slate-500">Multi-core OffscreenCanvas Web Workers</span>
-                    </div>
-                  </div>
-                  <span className="text-xs font-mono text-cyan-400 font-semibold">Active</span>
-                </div>
-
-                <div className="p-3 rounded-xl bg-dark-900/60 border border-white/5 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <Key className="w-4 h-4 text-purple-400" />
-                    <div>
-                      <span className="text-xs font-medium text-white block">Studio Secret API Token</span>
-                      <span className="text-[10px] text-slate-500">gx_live_9481948301948109</span>
-                    </div>
-                  </div>
-                  <button className="text-xs text-slate-400 hover:text-white transition">Copy</button>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setActiveNavTab('tools')}
-                className="w-full py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-dark-950 font-bold text-xs transition"
-              >
-                Back to Canvas Studio
-              </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Code Export Modal */}
+      {/* 3. MODALS */}
+      {/* Export Center Modal */}
+      <ExportCenterModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        project={project}
+      />
+
+      {/* Template Library Modal */}
+      <TemplateLibraryModal
+        isOpen={isTemplatesModalOpen}
+        onClose={() => setIsTemplatesModalOpen(false)}
+        onSelectTemplate={recipe => applyRecipe(recipe)}
+      />
+
+      {/* Controlled Randomize Modal */}
+      <ControlledRandomizeModal
+        isOpen={isRandomizeModalOpen}
+        onClose={() => setIsRandomizeModalOpen(false)}
+        currentProject={project}
+        onApplyProject={setProject}
+      />
+
+      {/* Universal Code Exporter Modal */}
       <CodeExportModal
         isOpen={isCodeModalOpen}
         onClose={() => setIsCodeModalOpen(false)}
@@ -447,34 +565,45 @@ export function App() {
       <PatternLibraryModal
         isOpen={isPatternModalOpen}
         onClose={() => setIsPatternModalOpen(false)}
-        activePatternId={settings.patterns.type}
+        activePatternId={
+          activeLayer && activeLayer.type === 'pattern' ? (activeLayer as any).patternType : 'pat_geometric_001'
+        }
         onSelectPattern={(patId, enable3D) => {
-          updateSettings('patterns', {
-            type: patId,
-            enabled: patId !== 'none',
-            fullFill: true,
-            fillMode: settings.patterns.fillMode || 'both',
-            fillOpacity: settings.patterns.fillOpacity ?? 45,
-            ...(enable3D !== undefined ? { is3D: enable3D } : {}),
-          });
+          if (activeLayer && activeLayer.type === 'pattern') {
+            updateLayer(activeLayer.id, {
+              patternType: patId,
+              is3D: enable3D !== undefined ? enable3D : (activeLayer as any).is3D,
+            } as any);
+          } else {
+            addLayer({
+              name: 'Pattern Layer',
+              type: 'pattern',
+              patternType: patId,
+              scale: 45,
+              rotation: 0,
+              color: '#00f0ff',
+              is3D: enable3D,
+              fullFill: true,
+            } as any);
+          }
         }}
-        currentColor={settings.patterns.color}
+        currentColor="#00f0ff"
       />
 
-      {/* 3D Wood & Texture Studio Modal */}
+      {/* 3D Wood Studio Modal (Three.js) */}
       <ThreeDStudioModal
         isOpen={is3DModalOpen}
         onClose={() => setIs3DModalOpen(false)}
         onSendToStudio={handleSendFrom3D}
       />
 
-      {/* ZIP Generation Modal / Toast */}
+      {/* Batch ZIP Export Notification Toast */}
       {isExportingZip && zipProgress && (
-        <div className="fixed bottom-6 right-6 z-50 glass-panel p-4 rounded-2xl border border-cyan-400/40 shadow-2xl flex items-center gap-3">
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-[#0e121d] border border-cyan-400/40 shadow-2xl flex items-center gap-3">
           <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-          <div className="text-xs">
+          <div className="text-xs font-mono">
             <span className="font-semibold text-white block">Bundling ZIP Export</span>
-            <span className="text-slate-400 font-mono">
+            <span className="text-slate-400">
               {zipProgress.current} / {zipProgress.total} ({zipProgress.percent}%)
             </span>
           </div>
